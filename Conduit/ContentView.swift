@@ -8,30 +8,166 @@
 import SwiftUI
 import SwiftData
 
+private enum ConduitTheme {
+    static let backgroundTop = Color(red: 0.04, green: 0.11, blue: 0.17)
+    static let backgroundBottom = Color(red: 0.00, green: 0.02, blue: 0.03)
+    static let card = Color.white.opacity(0.075)
+    static let inset = Color.white.opacity(0.07)
+    static let stroke = Color.white.opacity(0.12)
+    static let primary = Color.white
+    static let secondary = Color.white.opacity(0.66)
+    static let muted = Color.white.opacity(0.42)
+    static let accent = Color(red: 0.16, green: 0.55, blue: 1.0)
+    static let online = Color(red: 0.15, green: 0.92, blue: 0.38)
+    static let offline = Color(red: 0.95, green: 0.24, blue: 0.24)
+
+    static var background: LinearGradient {
+        LinearGradient(
+            colors: [backgroundTop, backgroundBottom],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+}
+
+private struct ConduitBackground<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        ZStack {
+            ConduitTheme.background
+                .ignoresSafeArea()
+
+            content
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
+private struct ScreenHeader: View {
+    let title: String
+    var action: (() -> Void)?
+
+    var body: some View {
+        HStack(alignment: .center) {
+            Text(title)
+                .font(.system(size: 34, weight: .bold, design: .default))
+                .foregroundStyle(ConduitTheme.primary)
+
+            Spacer()
+
+            if let action {
+                Button(action: action) {
+                    Image(systemName: "plus")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(ConduitTheme.accent)
+                        .frame(width: 44, height: 44)
+                        .background(.white.opacity(0.08), in: Circle())
+                }
+                .accessibilityLabel("Add")
+            }
+        }
+    }
+}
+
+private struct GlassCard<Content: View>: View {
+    var padding: CGFloat = 16
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .padding(padding)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(ConduitTheme.card)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(ConduitTheme.stroke, lineWidth: 1)
+            )
+    }
+}
+
+private struct StatusDot: View {
+    let isOnline: Bool
+    var offlineColor: Color = ConduitTheme.offline
+
+    var body: some View {
+        Circle()
+            .fill(isOnline ? ConduitTheme.online : offlineColor)
+            .frame(width: 12, height: 12)
+            .shadow(color: (isOnline ? ConduitTheme.online : offlineColor).opacity(0.45), radius: 8)
+    }
+}
+
+private struct SectionTitle: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(ConduitTheme.secondary)
+            .padding(.horizontal, 2)
+    }
+}
+
+private struct EditableRow<Field: View>: View {
+    let title: String
+    @ViewBuilder var field: Field
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
+            Text(title)
+                .foregroundStyle(ConduitTheme.primary)
+
+            Spacer(minLength: 12)
+
+            field
+        }
+        .font(.body)
+        .padding(.vertical, 8)
+    }
+}
+
+private struct DividerLine: View {
+    var body: some View {
+        Rectangle()
+            .fill(.white.opacity(0.09))
+            .frame(height: 1)
+    }
+}
+
 struct ContentView: View {
     @Query(sort: \Client.createdAt, order: .reverse) private var clients: [Client]
     @State private var showingAddSheet = false
 
     var body: some View {
         NavigationStack {
-            List(clients) { client in
-                NavigationLink {
-                    ClientDetailView(client: client)
-                } label: {
-                    ClientRow(client: client)
-                }
-            }
-            .navigationTitle("Conduit")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingAddSheet = true
-                    } label: {
-                        Image(systemName: "plus")
+            ConduitBackground {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        ScreenHeader(title: "Client") {
+                            showingAddSheet = true
+                        }
+
+                        LazyVStack(spacing: 12) {
+                            ForEach(clients) { client in
+                                NavigationLink {
+                                    ClientDetailView(client: client)
+                                } label: {
+                                    ClientCard(client: client)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
                     }
-                    .accessibilityLabel("Add Client")
+                    .padding(.horizontal, 20)
+                    .padding(.top, 18)
+                    .padding(.bottom, 28)
                 }
             }
+            .navigationTitle("")
+            .toolbarBackground(.hidden, for: .navigationBar)
             .sheet(isPresented: $showingAddSheet) {
                 AddClientView()
             }
@@ -39,32 +175,40 @@ struct ContentView: View {
     }
 }
 
-private struct ClientRow: View {
+private struct ClientCard: View {
     let client: Client
 
+    private var hasOnlineDeployment: Bool {
+        client.deployments.contains { $0.isOnline }
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(client.name)
-                    .font(.headline)
+        GlassCard {
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(client.name)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(ConduitTheme.primary)
 
-                Text(client.createdAt, format: Date.FormatStyle(date: .abbreviated, time: .omitted))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+                    HStack(spacing: 8) {
+                        Text(client.deployments.isEmpty ? "No deployments" : "\(client.deployments.count) deployment\(client.deployments.count == 1 ? "" : "s")")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(ConduitTheme.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(.white.opacity(0.08), in: Capsule())
 
-            Spacer()
+                        Text(client.createdAt, format: Date.FormatStyle(date: .abbreviated, time: .omitted))
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(ConduitTheme.muted)
+                    }
+                }
 
-            if !client.deployments.isEmpty {
-                Text("\(client.deployments.count)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.secondary.opacity(0.12), in: Capsule())
+                Spacer()
+
+                StatusDot(isOnline: hasOnlineDeployment, offlineColor: Color.white.opacity(0.28))
             }
         }
-        .padding(.vertical, 4)
     }
 }
 
@@ -80,7 +224,10 @@ struct AddClientView: View {
                 TextField("Name", text: $name)
                     .textInputAutocapitalization(.words)
             }
+            .scrollContentBackground(.hidden)
+            .background(ConduitTheme.background)
             .navigationTitle("Add Client")
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -111,26 +258,31 @@ struct ClientDetailView: View {
     @State private var showingAddDeploymentSheet = false
 
     var body: some View {
-        List {
-            ForEach(client.deployments) { deployment in
-                NavigationLink {
-                    DeploymentDetailView(deployment: deployment)
-                } label: {
-                    DeploymentRow(deployment: deployment)
+        ConduitBackground {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ScreenHeader(title: client.name) {
+                        showingAddDeploymentSheet = true
+                    }
+
+                    LazyVStack(spacing: 12) {
+                        ForEach(client.deployments) { deployment in
+                            NavigationLink {
+                                DeploymentDetailView(deployment: deployment)
+                            } label: {
+                                DeploymentRow(deployment: deployment)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 28)
             }
         }
-        .navigationTitle(client.name)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingAddDeploymentSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .accessibilityLabel("Add Deployment")
-            }
-        }
+        .navigationTitle("")
+        .toolbarBackground(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingAddDeploymentSheet) {
             AddDeploymentView(client: client)
         }
@@ -141,17 +293,17 @@ private struct DeploymentRow: View {
     let deployment: Deployment
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "circle.fill")
-                .font(.caption)
-                .foregroundStyle(deployment.isOnline ? .green : .red)
+        GlassCard {
+            HStack(spacing: 12) {
+                StatusDot(isOnline: deployment.isOnline)
 
-            Text(deploymentDisplayName)
-                .font(.headline)
+                Text(deploymentDisplayName)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(ConduitTheme.primary)
 
-            Spacer()
+                Spacer()
+            }
         }
-        .padding(.vertical, 4)
     }
 
     private var deploymentDisplayName: String {
@@ -230,7 +382,11 @@ struct AddDeploymentView: View {
                         .textContentType(.password)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(ConduitTheme.background)
             .navigationTitle("Add Deployment")
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .tint(ConduitTheme.accent)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -293,131 +449,161 @@ struct DeploymentDetailView: View {
     @State private var showingAddOptionSheet = false
 
     var body: some View {
-        Form {
-            Section {
-                LabeledContent("App Name") {
-                    TextField("Not Set", text: appNameBinding)
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .fontWeight(.semibold)
-                        .textInputAutocapitalization(.words)
-                }
-
-                Toggle("System Online", isOn: $deployment.isOnline)
-
-                LabeledContent("Admin URL Override") {
-                    TextField("None", text: adminURLOverrideBinding)
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .fontWeight(.semibold)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
-                        .autocorrectionDisabled()
-                }
-
-                LabeledContent("Local System Port") {
-                    TextField("Not Set", text: systemPortBinding)
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .fontWeight(.semibold)
-                        .keyboardType(.numberPad)
-                }
-            }
-
-            Section("Internal Routing") {
-                LabeledContent("Gunicorn Port") {
-                    TextField("Not Set", text: optionalIntBinding(\.gunicornPort))
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .fontWeight(.semibold)
-                        .keyboardType(.numberPad)
-                }
-
-                LabeledContent("Nginx Port") {
-                    TextField("Not Set", text: optionalIntBinding(\.nginxPort))
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .fontWeight(.semibold)
-                        .keyboardType(.numberPad)
-                }
-            }
-
-            Section("Database Config") {
-                LabeledContent("Database Name") {
-                    TextField("Not Set", text: optionalStringBinding(\.dbName))
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .fontWeight(.semibold)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                }
-
-                LabeledContent("Database Port") {
-                    TextField("Not Set", text: optionalIntBinding(\.dbPort))
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .fontWeight(.semibold)
-                        .keyboardType(.numberPad)
-                }
-
-                SecureCredentialView(deployment: deployment, title: "Database Password", keySuffix: "dbPassword")
-            }
-
-            Section("System Access") {
-                LabeledContent("Username") {
-                    TextField("Not Set", text: optionalStringBinding(\.username))
-                        .multilineTextAlignment(.trailing)
-                        .foregroundStyle(.secondary)
-                        .fontWeight(.semibold)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                }
-
-                SecureCredentialView(deployment: deployment, title: "Password", keySuffix: "systemAccessPassword")
-            }
-
-            Section("Django Admin") {
-                SecureCredentialView(deployment: deployment, title: "Superuser Password", keySuffix: "djangoAdminPassword")
-            }
-
-            Section("Cloudflare Tunnels") {
-                ForEach(deployment.tunnels) { tunnel in
-                    @Bindable var editableTunnel = tunnel
-
-                    HStack {
-                        TextField("Tunnel Name", text: $editableTunnel.name)
-                            .fontWeight(.semibold)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-
-                        TextField("Port", text: tunnelPortBinding(for: editableTunnel))
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .foregroundStyle(.secondary)
-                            .fontWeight(.semibold)
+        ConduitBackground {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    ScreenHeader(title: deploymentDisplayName) {
+                        showingAddOptionSheet = true
                     }
-                    .swipeActions {
-                        Button("Delete", role: .destructive) {
-                            deleteTunnel(tunnel)
+
+                    HStack(spacing: 8) {
+                        StatusDot(isOnline: deployment.isOnline)
+                        Text(deployment.isOnline ? "System Online" : "System Offline")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(ConduitTheme.secondary)
+                    }
+                    .padding(.top, -8)
+
+                    GlassCard {
+                        VStack(spacing: 0) {
+                            EditableRow(title: "App Name") {
+                                darkTextField("Not Set", text: appNameBinding)
+                                    .textInputAutocapitalization(.words)
+                            }
+
+                            DividerLine()
+
+                            Toggle("System Online", isOn: $deployment.isOnline)
+                                .tint(ConduitTheme.online)
+                                .foregroundStyle(ConduitTheme.primary)
+                                .padding(.vertical, 8)
+
+                            DividerLine()
+
+                            EditableRow(title: "Admin URL") {
+                                darkTextField("None", text: adminURLOverrideBinding)
+                                    .textInputAutocapitalization(.never)
+                                    .keyboardType(.URL)
+                                    .autocorrectionDisabled()
+                            }
+
+                            DividerLine()
+
+                            EditableRow(title: "Local System Port") {
+                                darkTextField("Not Set", text: systemPortBinding)
+                                    .keyboardType(.numberPad)
+                            }
+                        }
+                    }
+
+                    editableSection("Internal Routing") {
+                        EditableRow(title: "Gunicorn") {
+                            darkTextField("Not Set", text: optionalIntBinding(\.gunicornPort))
+                                .keyboardType(.numberPad)
+                        }
+
+                        DividerLine()
+
+                        EditableRow(title: "Nginx") {
+                            darkTextField("Not Set", text: optionalIntBinding(\.nginxPort))
+                                .keyboardType(.numberPad)
+                        }
+                    }
+
+                    editableSection("Database Config") {
+                        EditableRow(title: "Database Name") {
+                            darkTextField("Not Set", text: optionalStringBinding(\.dbName))
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                        }
+
+                        DividerLine()
+
+                        EditableRow(title: "Database Port") {
+                            darkTextField("Not Set", text: optionalIntBinding(\.dbPort))
+                                .keyboardType(.numberPad)
+                        }
+                    }
+
+                    editableSection("System Access") {
+                        EditableRow(title: "Username") {
+                            darkTextField("Not Set", text: optionalStringBinding(\.username))
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        SectionTitle(title: "Secure Vault")
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 14) {
+                                SecureCredentialView(deployment: deployment, title: "Superuser", keySuffix: "djangoAdminPassword")
+                                SecureCredentialView(deployment: deployment, title: "Database Password", keySuffix: "dbPassword")
+                                SecureCredentialView(deployment: deployment, title: "System Access", keySuffix: "systemAccessPassword")
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        SectionTitle(title: "Cloudflare Tunnels")
+
+                        GlassCard {
+                            if deployment.tunnels.isEmpty {
+                                Text("No tunnels configured")
+                                    .foregroundStyle(ConduitTheme.muted)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 8)
+                            } else {
+                                VStack(spacing: 0) {
+                                    ForEach(Array(deployment.tunnels.enumerated()), id: \.element.id) { index, tunnel in
+                                        @Bindable var editableTunnel = tunnel
+
+                                        HStack(spacing: 12) {
+                                            TextField("Tunnel Name", text: $editableTunnel.name)
+                                                .fontWeight(.semibold)
+                                                .foregroundStyle(ConduitTheme.primary)
+                                                .textInputAutocapitalization(.never)
+                                                .autocorrectionDisabled()
+
+                                            TextField("Port", text: tunnelPortBinding(for: editableTunnel))
+                                                .keyboardType(.numberPad)
+                                                .multilineTextAlignment(.trailing)
+                                                .foregroundStyle(ConduitTheme.secondary)
+                                                .fontWeight(.semibold)
+                                                .frame(width: 72)
+                                        }
+                                        .padding(.vertical, 9)
+                                        .swipeActions {
+                                            Button("Delete", role: .destructive) {
+                                                deleteTunnel(tunnel)
+                                            }
+                                        }
+
+                                        if index < deployment.tunnels.count - 1 {
+                                            DividerLine()
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 28)
             }
         }
-        .navigationTitle("Deployment")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingAddOptionSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .accessibilityLabel("Add Option")
-            }
-        }
+        .navigationTitle("")
+        .toolbarBackground(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingAddOptionSheet) {
             AddDeploymentOptionView(deployment: deployment)
         }
+    }
+
+    private var deploymentDisplayName: String {
+        let trimmedAppName = deployment.appName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmedAppName.isEmpty ? "Deployment" : trimmedAppName
     }
 
     private var systemPortBinding: Binding<String> {
@@ -430,6 +616,25 @@ struct DeploymentDetailView: View {
 
     private var adminURLOverrideBinding: Binding<String> {
         optionalStringBinding(\.adminURLOverride)
+    }
+
+    private func editableSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionTitle(title: title)
+            GlassCard {
+                VStack(spacing: 0) {
+                    content()
+                }
+            }
+        }
+    }
+
+    private func darkTextField(_ placeholder: String, text: Binding<String>) -> some View {
+        TextField(placeholder, text: text)
+            .multilineTextAlignment(.trailing)
+            .foregroundStyle(ConduitTheme.secondary)
+            .fontWeight(.semibold)
+            .tint(ConduitTheme.accent)
     }
 
     private func optionalIntBinding(_ keyPath: ReferenceWritableKeyPath<Deployment, Int?>) -> Binding<String> {
@@ -556,7 +761,11 @@ struct AddDeploymentOptionView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(ConduitTheme.background)
             .navigationTitle("Add Option")
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .tint(ConduitTheme.accent)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

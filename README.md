@@ -50,6 +50,10 @@ From a deployment screen, unlock the relevant credential section, edit or enter 
 
 The deployment list intentionally stays compact: it shows the app name and an online/offline indicator.
 
+## Interface Direction
+
+Conduit now uses a dark, card-based operations UI with bold headings, blue action accents, and green/red system status dots. The working design language is documented in [DESIGN.md](DESIGN.md) so future screens can keep the same visual direction.
+
 ## Offline First
 
 Conduit is designed for local, offline personal use. Server metadata is stored on device with SwiftData, and credentials are stored separately in the iOS Keychain.
