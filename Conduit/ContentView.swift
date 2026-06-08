@@ -46,24 +46,13 @@ private struct ConduitBackground<Content: View>: View {
 
 private struct ScreenHeader: View {
     let title: String
-    var logoName: String?
     var action: (() -> Void)?
 
     var body: some View {
         HStack(alignment: .center) {
-            HStack(spacing: 10) {
-                if let logoName {
-                    Image(logoName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 34, height: 34)
-                        .accessibilityHidden(true)
-                }
-
-                Text(title)
-                    .font(.system(size: 34, weight: .bold, design: .default))
-                    .foregroundStyle(ConduitTheme.primary)
-            }
+            Text(title)
+                .font(.system(size: 34, weight: .bold, design: .default))
+                .foregroundStyle(ConduitTheme.primary)
 
             Spacer()
 
@@ -191,7 +180,6 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         ScreenHeader(
                             title: "Client",
-                            logoName: "AppLogo",
                             action: clients.count < FreeTierLimits.maxClients ? {
                                 showingAddSheet = true
                             } : nil
@@ -229,8 +217,6 @@ struct ContentView: View {
                                 }
                             }
                         }
-
-                        ArksoftFooter()
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 18)
@@ -260,6 +246,7 @@ struct ContentView: View {
             .sheet(isPresented: $showingAddSheet) {
                 AddClientView()
             }
+            .poweredByArksoftFooter()
             .onAppear {
                 seedSampleDataIfNeeded()
             }
@@ -378,22 +365,28 @@ struct ContentView: View {
     }
 }
 
-private struct ArksoftFooter: View {
+private struct PoweredByArksoftFooter: View {
     var body: some View {
-        HStack {
-            Spacer()
+        HStack(spacing: 4) {
+            Text("Powered by")
+                .foregroundStyle(ConduitTheme.muted)
 
-            Image("ArksoftLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(height: 24)
-                .opacity(0.56)
-                .accessibilityLabel("Arksoft")
-
-            Spacer()
+            Link("ArkSoft", destination: URL(string: "https://arksoft.xyz")!)
+                .foregroundStyle(ConduitTheme.accent)
         }
-        .padding(.top, 12)
-        .padding(.bottom, 4)
+        .font(.caption.weight(.semibold))
+        .frame(maxWidth: .infinity)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .background(ConduitTheme.backgroundBottom.opacity(0.96))
+    }
+}
+
+private extension View {
+    func poweredByArksoftFooter() -> some View {
+        safeAreaInset(edge: .bottom, spacing: 0) {
+            PoweredByArksoftFooter()
+        }
     }
 }
 
@@ -619,6 +612,7 @@ struct ClientDetailView: View {
         .sheet(isPresented: $showingAddDeploymentSheet) {
             AddDeploymentView(client: client)
         }
+        .poweredByArksoftFooter()
     }
 
     private func deleteDeployment(_ deployment: Deployment) {
@@ -966,6 +960,7 @@ struct DeploymentDetailView: View {
         .sheet(isPresented: $showingAddOptionSheet) {
             AddDeploymentOptionView(deployment: deployment)
         }
+        .poweredByArksoftFooter()
     }
 
     private var deploymentDisplayName: String {
