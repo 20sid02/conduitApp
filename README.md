@@ -15,7 +15,6 @@ Conduit tracks the practical details developers reach for while maintaining smal
 - internal service names and ports
 - database names, ports, and sensitive host/token values
 - server and admin usernames
-- Cloudflare tunnel names and ports
 - custom text, URL, port, and password fields
 - sensitive passwords stored separately in the iOS Keychain
 
@@ -31,17 +30,24 @@ Conduit Free includes:
 - dark card-based operations UI
 - inline editing for deployment metadata
 - flexible internal routing with service-name and port rows
-- Cloudflare tunnel editing and deletion
 - one-tap opening for saved admin URLs
 - custom settings sections with text, URL, port, and password fields
 - local delete flows that also clear saved credentials
 - Face ID, Touch ID, or passcode-gated credential access
+
+Free limits:
+
+- up to 4 clients
+- up to 3 deployments per client
+- one database config per deployment
+- one system access config per deployment
 
 The free version does not include:
 
 - iCloud sync
 - active uptime monitoring
 - Cloudflare API imports
+- Cloudflare tunnel management
 - reusable custom field templates
 - PDF or markdown handover exports
 - subscription-only automation features
@@ -55,9 +61,8 @@ Conduit organizes data into three levels:
 - **Clients**: a top-level project, customer, server group, or environment.
 - **Deployments**: an app or system running for a client.
 - **Internal Routes**: service names and ports for local routing.
-- **Cloudflare Tunnels**: tunnel entries attached to a deployment.
 
-Each deployment can store routing, database, system access, tunnel, and admin URL details. The deployment list intentionally stays compact: it shows the app name and online/offline status.
+Each deployment can store routing, database, system access, admin access, custom settings, and admin URL details. The deployment list intentionally stays compact: it shows the app name and online/offline status.
 
 Custom settings are available for stack-specific details that do not fit the built-in sections. A custom field can be plain text, a clickable URL, a port, or a Keychain-backed password.
 
@@ -88,6 +93,8 @@ Conduit Free has no backend, no account system, and no remote sync. Server metad
 This makes the free version useful for personal workflows, local-first client tracking, and quick reference while working on deployments.
 
 ## Development Notes
+
+On a fresh empty install, Conduit seeds sample local data once so the free workflow can be tested immediately.
 
 If the app fails to launch after a SwiftData schema change during development, delete the app from the simulator or device and run it again. This clears the old local store.
 

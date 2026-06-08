@@ -167,6 +167,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \Client.createdAt, order: .reverse) private var clients: [Client]
+    @AppStorage("hasSeededFreeSampleData") private var hasSeededFreeSampleData = false
     @State private var showingAddSheet = false
     @State private var searchText = ""
     @State private var clientPendingDeletion: Client?
@@ -177,8 +178,19 @@ struct ContentView: View {
             ConduitBackground {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
-                        ScreenHeader(title: "Client") {
-                            showingAddSheet = true
+                        ScreenHeader(
+                            title: "Client",
+                            action: clients.count < FreeTierLimits.maxClients ? {
+                                showingAddSheet = true
+                            } : nil
+                        )
+
+                        if clients.count >= FreeTierLimits.maxClients {
+                            EmptyStateCard(
+                                systemImage: "lock",
+                                title: "Free client limit reached",
+                                message: "Conduit Free supports up to \(FreeTierLimits.maxClients) clients. Delete a client to add another."
+                            )
                         }
 
                         if filteredClients.isEmpty {
@@ -234,6 +246,9 @@ struct ContentView: View {
             .sheet(isPresented: $showingAddSheet) {
                 AddClientView()
             }
+            .onAppear {
+                seedSampleDataIfNeeded()
+            }
         }
     }
 
@@ -257,12 +272,119 @@ struct ContentView: View {
         modelContext.delete(client)
         clientPendingDeletion = nil
     }
+
+    private func seedSampleDataIfNeeded() {
+        guard !hasSeededFreeSampleData, clients.isEmpty else {
+            return
+        }
+
+        let acme = Client(name: "Acme Studio", createdAt: Date().addingTimeInterval(-86_400 * 3))
+        let northstar = Client(name: "Northstar Dental", createdAt: Date().addingTimeInterval(-86_400))
+
+        modelContext.insert(acme)
+        modelContext.insert(northstar)
+
+        let portal = Deployment(
+            client: acme,
+            appName: "Client Portal",
+            dateDeployed: Date().addingTimeInterval(-7_200),
+            isOnline: true,
+            adminURLOverride: "portal.acme.test/admin",
+            systemPort: 8080,
+            dbName: "acme_portal",
+            dbPort: 5432,
+            adminUsername: "admin@acme.test",
+            username: "deploy"
+        )
+        let api = Deployment(
+            client: acme,
+            appName: "Billing API",
+            dateDeployed: Date().addingTimeInterval(-3_600),
+            isOnline: false,
+            adminURLOverride: "billing.acme.test/admin",
+            systemPort: 9000,
+            dbName: "billing",
+            dbPort: 5432,
+            adminUsername: "billing-admin",
+            username: "ubuntu"
+        )
+        let booking = Deployment(
+            client: northstar,
+            appName: "Booking Dashboard",
+            dateDeployed: Date().addingTimeInterval(-1_800),
+            isOnline: true,
+            adminURLOverride: "northstar.local/dashboard",
+            systemPort: 3000,
+            dbName: "northstar_booking",
+            dbPort: 3306,
+            adminUsername: "ops",
+            username: "deploy"
+        )
+
+        [portal, api].forEach { acme.deployments.append($0) }
+        northstar.deployments.append(booking)
+        [portal, api, booking].forEach(modelContext.insert)
+
+        addRoute("Web app", 8080, to: portal, order: 0)
+        addRoute("Worker", 8787, to: portal, order: 1)
+        addRoute("API", 9000, to: api, order: 0)
+        addRoute("Frontend", 3000, to: booking, order: 0)
+        addRoute("Search", 7700, to: booking, order: 1)
+
+        addCustomSetting(sectionTitle: "Hosting Panel", label: "Panel URL", value: "https://panel.acme.test", type: .url, to: portal)
+        addCustomSetting(sectionTitle: "Release Notes", label: "Branch", value: "main", type: .text, to: portal)
+
+        saveSampleCredentials(for: portal)
+        saveSampleCredentials(for: api)
+        saveSampleCredentials(for: booking)
+
+        hasSeededFreeSampleData = true
+    }
+
+    private func addRoute(_ serviceName: String, _ port: Int, to deployment: Deployment, order: Int) {
+        let route = InternalRoute(deployment: deployment, serviceName: serviceName, port: port, sortOrder: order)
+        deployment.internalRoutes.append(route)
+        modelContext.insert(route)
+    }
+
+    private func addCustomSetting(sectionTitle: String, label: String, value: String, type: CustomSettingFieldType, to deployment: Deployment) {
+        let section = CustomSettingSection(deployment: deployment, title: sectionTitle, sortOrder: deployment.customSections.count)
+        let field = CustomSettingField(section: section, label: label, value: value, type: type, sortOrder: 0)
+        section.fields.append(field)
+        deployment.customSections.append(section)
+        modelContext.insert(section)
+        modelContext.insert(field)
+    }
+
+    private func saveSampleCredentials(for deployment: Deployment) {
+        _ = KeychainManager.save(key: "\(deployment.id)-dbHost", value: "sample-db.internal")
+        _ = KeychainManager.save(key: "\(deployment.id)-dbPassword", value: "sample-db-password")
+        _ = KeychainManager.save(key: "\(deployment.id)-systemAccessPassword", value: "sample-system-password")
+        _ = KeychainManager.save(key: "\(deployment.id)-adminAccessPassword", value: "sample-admin-password")
+    }
+}
+
+private enum FreeTierLimits {
+    static let maxClients = 4
+    static let maxDeploymentsPerClient = 3
 }
 
 private extension Deployment {
     var displayName: String {
         let trimmedAppName = appName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmedAppName.isEmpty ? "Unnamed App" : trimmedAppName
+    }
+
+    var hasDatabaseConfig: Bool {
+        dbName != nil
+            || dbPort != nil
+            || KeychainManager.read(key: "\(id)-dbHost") != nil
+            || KeychainManager.read(key: "\(id)-dbPassword") != nil
+    }
+
+    var hasSystemAccess: Bool {
+        username != nil
+            || KeychainManager.read(key: "\(id)-systemAccessPassword") != nil
     }
 }
 
@@ -397,8 +519,19 @@ struct ClientDetailView: View {
         ConduitBackground {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    ScreenHeader(title: client.name) {
-                        showingAddDeploymentSheet = true
+                    ScreenHeader(
+                        title: client.name,
+                        action: client.deployments.count < FreeTierLimits.maxDeploymentsPerClient ? {
+                            showingAddDeploymentSheet = true
+                        } : nil
+                    )
+
+                    if client.deployments.count >= FreeTierLimits.maxDeploymentsPerClient {
+                        EmptyStateCard(
+                            systemImage: "lock",
+                            title: "Free deployment limit reached",
+                            message: "Conduit Free supports up to \(FreeTierLimits.maxDeploymentsPerClient) deployments per client. Delete one to add another."
+                        )
                     }
 
                     if client.deployments.isEmpty {
@@ -582,7 +715,7 @@ struct AddDeploymentView: View {
                     Button("Save") {
                         saveDeployment()
                     }
-                    .disabled(trimmedAppName.isEmpty)
+                    .disabled(trimmedAppName.isEmpty || client.deployments.count >= FreeTierLimits.maxDeploymentsPerClient)
                 }
             }
         }
@@ -789,59 +922,6 @@ struct DeploymentDetailView: View {
                     }
 
                     customSettingsSections
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        SectionTitle(title: "Cloudflare Tunnels")
-
-                        GlassCard {
-                            if deployment.tunnels.isEmpty {
-                                Text("No tunnels configured")
-                                    .foregroundStyle(ConduitTheme.muted)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.vertical, 8)
-                            } else {
-                                VStack(spacing: 0) {
-                                    ForEach(Array(deployment.tunnels.enumerated()), id: \.element.id) { index, tunnel in
-                                        @Bindable var editableTunnel = tunnel
-
-                                        HStack(spacing: 12) {
-                                            TextField("Tunnel Name", text: $editableTunnel.name)
-                                                .fontWeight(.semibold)
-                                                .foregroundStyle(ConduitTheme.primary)
-                                                .textInputAutocapitalization(.never)
-                                                .autocorrectionDisabled()
-
-                                            TextField("Port", text: tunnelPortBinding(for: editableTunnel))
-                                                .keyboardType(.numberPad)
-                                                .multilineTextAlignment(.trailing)
-                                                .foregroundStyle(ConduitTheme.secondary)
-                                                .fontWeight(.semibold)
-                                                .frame(width: 72)
-
-                                            Button(role: .destructive) {
-                                                deleteTunnel(tunnel)
-                                            } label: {
-                                                Image(systemName: "trash")
-                                                    .font(.subheadline.weight(.semibold))
-                                                    .foregroundStyle(ConduitTheme.offline)
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
-                                        .padding(.vertical, 9)
-                                        .swipeActions {
-                                            Button("Delete", role: .destructive) {
-                                                deleteTunnel(tunnel)
-                                            }
-                                        }
-
-                                        if index < deployment.tunnels.count - 1 {
-                                            DividerLine()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
@@ -1212,6 +1292,7 @@ struct AddDeploymentOptionView: View {
     @State private var dbPassword = ""
     @State private var username = ""
     @State private var systemAccessPassword = ""
+    @State private var adminUsername = ""
     @State private var adminAccessPassword = ""
     @State private var customSectionTitle = ""
     @State private var customFieldLabel = ""
@@ -1224,7 +1305,7 @@ struct AddDeploymentOptionView: View {
             Form {
                 Section {
                     Picker("Add", selection: $selectedOption) {
-                        ForEach(DeploymentAddOption.allCases) { option in
+                        ForEach(availableOptions) { option in
                             Text(option.rawValue).tag(option)
                         }
                     }
@@ -1269,19 +1350,23 @@ struct AddDeploymentOptionView: View {
 
                 case .adminAccess:
                     Section("Admin Access") {
+                        TextField("Admin Username", text: $adminUsername)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+
                         SecureField("Admin Password", text: $adminAccessPassword)
                             .textContentType(.password)
                     }
 
                 case .customSetting:
                     Section("Custom Setting") {
-                        TextField("Section Name", text: $customSectionTitle, prompt: Text("Hosting Panel"))
+                        TextField("Settings Group", text: $customSectionTitle, prompt: Text("Hosting Panel"))
                             .textInputAutocapitalization(.words)
 
-                        TextField("Field Label", text: $customFieldLabel, prompt: Text("Dashboard URL"))
+                        TextField("Setting Name", text: $customFieldLabel, prompt: Text("Dashboard URL"))
                             .textInputAutocapitalization(.words)
 
-                        Picker("Field Type", selection: $customFieldType) {
+                        Picker("Setting Type", selection: $customFieldType) {
                             ForEach(CustomSettingFieldType.allCases) { type in
                                 Text(type.displayName).tag(type)
                             }
@@ -1315,6 +1400,12 @@ struct AddDeploymentOptionView: View {
             .navigationTitle("Add Option")
             .toolbarColorScheme(.dark, for: .navigationBar)
             .tint(ConduitTheme.accent)
+            .onAppear {
+                normalizeSelectedOption()
+            }
+            .onChange(of: availableOptions.map(\.rawValue)) {
+                normalizeSelectedOption()
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -1346,6 +1437,19 @@ struct AddDeploymentOptionView: View {
             return trimmedCustomSectionTitle.isEmpty
                 || trimmedCustomFieldLabel.isEmpty
                 || (customFieldType == .password ? customFieldPassword.isEmpty : false)
+        }
+    }
+
+    private var availableOptions: [DeploymentAddOption] {
+        DeploymentAddOption.allCases.filter { option in
+            switch option {
+            case .databaseConfig:
+                !deployment.hasDatabaseConfig
+            case .systemAccess:
+                !deployment.hasSystemAccess
+            case .internalRouting, .adminAccess, .customSetting:
+                true
+            }
         }
     }
 
@@ -1402,6 +1506,11 @@ struct AddDeploymentOptionView: View {
             savePassword(systemAccessPassword, keySuffix: "systemAccessPassword")
 
         case .adminAccess:
+            let trimmedAdminUsername = adminUsername.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedAdminUsername.isEmpty {
+                deployment.adminUsername = trimmedAdminUsername
+            }
+
             savePassword(adminAccessPassword, keySuffix: "adminAccessPassword")
 
         case .customSetting:
@@ -1413,6 +1522,14 @@ struct AddDeploymentOptionView: View {
 
     private func intValue(from text: String) -> Int? {
         Int(text.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    private func normalizeSelectedOption() {
+        guard !availableOptions.contains(selectedOption), let firstOption = availableOptions.first else {
+            return
+        }
+
+        selectedOption = firstOption
     }
 
     private func savePassword(_ password: String, keySuffix: String) {
