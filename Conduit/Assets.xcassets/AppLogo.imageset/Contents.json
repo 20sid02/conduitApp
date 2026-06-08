@@ -1,6 +1,16 @@
 {
   "images" : [
     {
+      "filename" : "logo-new.png",
+      "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
       "filename" : "app-logo-nobg.png",
       "idiom" : "universal"
     }

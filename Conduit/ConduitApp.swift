@@ -15,7 +15,6 @@ struct ConduitApp: App {
             Client.self,
             Deployment.self,
             InternalRoute.self,
-            Tunnel.self,
             CustomSettingSection.self,
             CustomSettingField.self,
         ])

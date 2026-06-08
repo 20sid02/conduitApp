@@ -25,19 +25,14 @@ final class Deployment {
     var appName: String?
     var dateDeployed: Date
     var isOnline: Bool
-    var adminURLOverride: String?
+    var deploymentURL: String?
     var systemPort: Int?
-    var gunicornPort: Int?
-    var nginxPort: Int?
     var dbName: String?
     var dbPort: Int?
     var adminUsername: String?
     @Attribute(originalName: "itsUsername") var username: String?
 
     var client: Client
-
-    @Relationship(deleteRule: .cascade, inverse: \Tunnel.deployment)
-    var tunnels: [Tunnel] = []
 
     @Relationship(deleteRule: .cascade, inverse: \InternalRoute.deployment)
     var internalRoutes: [InternalRoute] = []
@@ -51,10 +46,8 @@ final class Deployment {
         appName: String? = nil,
         dateDeployed: Date = Date(),
         isOnline: Bool,
-        adminURLOverride: String? = nil,
+        deploymentURL: String? = nil,
         systemPort: Int? = nil,
-        gunicornPort: Int? = nil,
-        nginxPort: Int? = nil,
         dbName: String? = nil,
         dbPort: Int? = nil,
         adminUsername: String? = nil,
@@ -65,10 +58,8 @@ final class Deployment {
         self.appName = appName
         self.dateDeployed = dateDeployed
         self.isOnline = isOnline
-        self.adminURLOverride = adminURLOverride
+        self.deploymentURL = deploymentURL
         self.systemPort = systemPort
-        self.gunicornPort = gunicornPort
-        self.nginxPort = nginxPort
         self.dbName = dbName
         self.dbPort = dbPort
         self.adminUsername = adminUsername
@@ -159,21 +150,5 @@ enum CustomSettingFieldType: String, CaseIterable, Identifiable {
         case .password:
             "Password"
         }
-    }
-}
-
-@Model
-final class Tunnel {
-    @Attribute(.unique) var id: UUID
-    var name: String
-    var port: Int
-
-    var deployment: Deployment
-
-    init(id: UUID = UUID(), deployment: Deployment, name: String, port: Int) {
-        self.id = id
-        self.deployment = deployment
-        self.name = name
-        self.port = port
     }
 }

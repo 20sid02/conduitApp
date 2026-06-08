@@ -18,7 +18,7 @@ I am using Conduit to track the practical details I usually need when maintainin
 - custom text, URL, port, and password fields
 - sensitive passwords stored separately in the iOS Keychain
 
-I am not trying to make Conduit an SSH client, uptime monitor, Cloudflare dashboard, or CI/CD tracker in the free version. I want it to sit between those tools as a personal offline infrastructure map.
+I am not trying to make Conduit an SSH client, uptime monitor, provider dashboard, or CI/CD tracker in the free version. I want it to sit between those tools as a personal offline infrastructure map.
 
 ## Free Version Scope
 
@@ -46,8 +46,8 @@ I am intentionally leaving these out of the free version for now:
 
 - iCloud sync
 - active uptime monitoring
-- Cloudflare API imports
-- Cloudflare tunnel management
+- provider/API imports
+- provider-specific infrastructure management
 - reusable custom field templates
 - PDF or markdown handover exports
 - subscription-only automation features

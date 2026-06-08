@@ -241,7 +241,7 @@ struct ContentView: View {
                     clientPendingDeletion = nil
                 }
             } message: {
-                Text("This removes the client, deployments, tunnels, and saved credentials from this device.")
+                Text("This removes the client, deployments, and saved credentials from this device.")
             }
             .sheet(isPresented: $showingAddSheet) {
                 AddClientView()
@@ -290,7 +290,7 @@ struct ContentView: View {
             appName: "Client Portal",
             dateDeployed: Date().addingTimeInterval(-7_200),
             isOnline: true,
-            adminURLOverride: "portal.acme.test",
+            deploymentURL: "portal.acme.test",
             systemPort: 8080,
             dbName: "acme_portal",
             dbPort: 5432,
@@ -302,7 +302,7 @@ struct ContentView: View {
             appName: "Billing API",
             dateDeployed: Date().addingTimeInterval(-3_600),
             isOnline: false,
-            adminURLOverride: "billing.acme.test",
+            deploymentURL: "billing.acme.test",
             systemPort: 9000,
             dbName: "billing",
             dbPort: 5432,
@@ -314,7 +314,7 @@ struct ContentView: View {
             appName: "Booking Dashboard",
             dateDeployed: Date().addingTimeInterval(-1_800),
             isOnline: true,
-            adminURLOverride: "northstar.local/dashboard",
+            deploymentURL: "northstar.local/dashboard",
             systemPort: 3000,
             dbName: "northstar_booking",
             dbPort: 3306,
@@ -564,7 +564,7 @@ struct ClientDetailView: View {
                         EmptyStateCard(
                             systemImage: "server.rack",
                             title: "No deployments yet",
-                            message: "Add the first app running for this client, then attach routing, database, tunnel, and vault details."
+                            message: "Add the first app running for this client, then attach routing, database, access, and vault details."
                         )
                     } else {
                         LazyVStack(spacing: 12) {
@@ -607,7 +607,7 @@ struct ClientDetailView: View {
                 deploymentPendingDeletion = nil
             }
         } message: {
-            Text("This removes the deployment, tunnels, and saved credentials from this device.")
+            Text("This removes the deployment and saved credentials from this device.")
         }
         .sheet(isPresented: $showingAddDeploymentSheet) {
             AddDeploymentView(client: client)
@@ -652,7 +652,7 @@ struct AddDeploymentView: View {
     @Bindable var client: Client
     @State private var appName = ""
     @State private var isOnline = true
-    @State private var adminURLOverride = ""
+    @State private var deploymentURL = ""
     @State private var systemPort = ""
     @State private var routeOneName = ""
     @State private var routeOnePort = ""
@@ -678,7 +678,7 @@ struct AddDeploymentView: View {
 
                     Toggle("Online System", isOn: $isOnline)
 
-                    TextField("Deployment URL", text: $adminURLOverride)
+                    TextField("Deployment URL", text: $deploymentURL)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                         .autocorrectionDisabled()
@@ -749,7 +749,7 @@ struct AddDeploymentView: View {
     }
 
     private func saveDeployment() {
-        let trimmedURL = adminURLOverride.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedURL = deploymentURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDbName = dbName.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedAdminUsername = adminUsername.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -758,7 +758,7 @@ struct AddDeploymentView: View {
             appName: trimmedAppName,
             dateDeployed: Date(),
             isOnline: isOnline,
-            adminURLOverride: trimmedURL.isEmpty ? nil : trimmedURL,
+            deploymentURL: trimmedURL.isEmpty ? nil : trimmedURL,
             systemPort: intValue(from: systemPort),
             dbName: trimmedDbName.isEmpty ? nil : trimmedDbName,
             dbPort: intValue(from: dbPort),
@@ -864,7 +864,7 @@ struct DeploymentDetailView: View {
                             DividerLine()
 
                             EditableRow(title: "Deployment URL") {
-                                darkTextField("None", text: adminURLOverrideBinding)
+                                darkTextField("None", text: deploymentURLBinding)
                                     .textInputAutocapitalization(.never)
                                     .keyboardType(.URL)
                                     .autocorrectionDisabled()
@@ -976,12 +976,12 @@ struct DeploymentDetailView: View {
         optionalStringBinding(\.appName)
     }
 
-    private var adminURLOverrideBinding: Binding<String> {
-        optionalStringBinding(\.adminURLOverride)
+    private var deploymentURLBinding: Binding<String> {
+        optionalStringBinding(\.deploymentURL)
     }
 
     private var deploymentURL: URL? {
-        let rawValue = deployment.adminURLOverride?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let rawValue = deployment.deploymentURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         guard !rawValue.isEmpty else {
             return nil
@@ -1241,18 +1241,6 @@ struct DeploymentDetailView: View {
         }
     }
 
-    private func tunnelPortBinding(for tunnel: Tunnel) -> Binding<String> {
-        Binding {
-            String(tunnel.port)
-        } set: { newValue in
-            let trimmedValue = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            if let port = Int(trimmedValue) {
-                tunnel.port = port
-            }
-        }
-    }
-
     private func internalRoutePortBinding(for route: InternalRoute) -> Binding<String> {
         Binding {
             String(route.port)
@@ -1263,11 +1251,6 @@ struct DeploymentDetailView: View {
                 route.port = port
             }
         }
-    }
-
-    private func deleteTunnel(_ tunnel: Tunnel) {
-        deployment.tunnels.removeAll { $0.id == tunnel.id }
-        modelContext.delete(tunnel)
     }
 
     private func deleteInternalRoute(_ route: InternalRoute) {
@@ -1609,10 +1592,10 @@ struct AddDeploymentOptionView: View {
 
 #Preview("ContentView") {
     ContentView()
-        .modelContainer(for: [Client.self, Deployment.self, InternalRoute.self, Tunnel.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
+        .modelContainer(for: [Client.self, Deployment.self, InternalRoute.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
 }
 
 #Preview("AddClientView") {
     AddClientView()
-        .modelContainer(for: [Client.self, Deployment.self, InternalRoute.self, Tunnel.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
+        .modelContainer(for: [Client.self, Deployment.self, InternalRoute.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
 }
