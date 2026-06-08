@@ -1,35 +1,64 @@
-# Conduit
+# Conduit Free
 
-Conduit is an offline iOS app for keeping track of personal server deployments, local ports, tunnels, and sensitive credentials in one place.
+Conduit is an offline iOS app for freelancers, small agencies, and solo developers who need a clear map of client deployments without keeping everything in notes, spreadsheets, or memory.
 
-It is built for a simple personal workflow: open a client, see the apps deployed on that server, check the important ports and routing details, and unlock passwords only when needed.
+The free version is focused on one job: keep local infrastructure details and sensitive credentials organized on device.
 
-## What Conduit Tracks
+## What It Helps With
 
-Conduit organizes infrastructure into three levels:
+Conduit tracks the practical details developers reach for while maintaining small client systems:
 
-- **Clients**: the top-level grouping for a person, project, server, or environment.
-- **Deployments**: apps or systems running under a client.
-- **Cloudflare Tunnels**: tunnel names and ports attached to a deployment.
+- which clients or projects exist
+- which apps are deployed for each client
+- whether a system is marked online or offline
+- admin URLs and local system ports
+- Gunicorn and Nginx routing ports
+- database names and ports
+- server usernames
+- Cloudflare tunnel names and ports
+- sensitive passwords stored separately in the iOS Keychain
 
-Each deployment can store:
+It is not an SSH client, uptime monitor, Cloudflare dashboard, or CI/CD tracker. Conduit Free is the offline infrastructure map that sits between those tools.
 
-- app name
-- online/offline status
-- admin URL override
-- local system port
-- Gunicorn port
-- Nginx port
-- database name
-- database port
-- system username
-- Cloudflare tunnel entries
+## Free Version Scope
 
-## Credentials
+Conduit Free includes:
+
+- local-only SwiftData storage
+- manual client and deployment entry
+- searchable client dashboard
+- dark card-based operations UI
+- inline editing for deployment metadata
+- Cloudflare tunnel creation, editing, and deletion
+- one-tap opening for saved admin URLs
+- local delete flows that also clear saved credentials
+- Face ID, Touch ID, or passcode-gated credential access
+
+The free version does not include:
+
+- iCloud sync
+- active uptime monitoring
+- Cloudflare API imports
+- PDF or markdown handover exports
+- subscription-only automation features
+
+Those are future Pro features. The free branch should remain useful without depending on them.
+
+## App Structure
+
+Conduit organizes data into three levels:
+
+- **Clients**: a top-level project, customer, server group, or environment.
+- **Deployments**: an app or system running for a client.
+- **Cloudflare Tunnels**: tunnel entries attached to a deployment.
+
+Each deployment can store routing, database, system access, tunnel, and admin URL details. The deployment list intentionally stays compact: it shows the app name and online/offline status.
+
+## Credential Safety
 
 Passwords are not stored in SwiftData.
 
-Conduit stores passwords in the iOS Keychain and protects access with Face ID, Touch ID, or device passcode fallback. Credential items are saved with device-only accessibility, so they stay tied to the current device.
+Conduit stores passwords in the iOS Keychain and saves them with device-only accessibility. Credential sections are locked by default and require Face ID, Touch ID, or device passcode authentication before editing.
 
 Current credential types:
 
@@ -37,59 +66,20 @@ Current credential types:
 - system access password
 - Django admin superuser password
 
-From a deployment screen, unlock the relevant credential section, edit or enter the password, then save. The view locks again after saving.
-
-## Current App Flow
-
-1. Open Conduit.
-2. Add a client.
-3. Open the client.
-4. Add a deployment for an app running on that client/server.
-5. Fill in routing, database, system access, and tunnel details.
-6. Unlock credential fields only when you need to view or update passwords.
-
-The deployment list intentionally stays compact: it shows the app name and an online/offline indicator.
+When a deployment or client is deleted, Conduit also deletes the related saved credentials from the Keychain.
 
 ## Interface Direction
 
-Conduit now uses a dark, card-based operations UI with bold headings, blue action accents, and green/red system status dots. The working design language is documented in [DESIGN.md](DESIGN.md) so future screens can keep the same visual direction.
-
-## Free Version Scope
-
-The free version is intentionally useful without a subscription:
-
-- local-only client and deployment tracking
-- manual routing, database, username, and tunnel entry
-- searchable client dashboard
-- offline Face ID/passcode credential vault
-- inline editing for deployment metadata
-- local delete flows that also clear saved credentials
-- one-tap opening for saved admin URLs
-
-Future paid features can build on top of this without weakening the free app: iCloud sync, uptime checks, Cloudflare API import, and generated handover reports.
+Conduit uses a dark, card-based operations UI with bold headings, blue action accents, and green/red system status dots. The design direction is documented in [DESIGN.md](DESIGN.md) and should guide future free and Pro screens.
 
 ## Offline First
 
-Conduit is designed for local, offline personal use. Server metadata is stored on device with SwiftData, and credentials are stored separately in the iOS Keychain.
+Conduit Free has no backend, no account system, and no remote sync. Server metadata stays in the local SwiftData store, and credentials stay in the local iOS Keychain.
 
-There is no remote sync, account system, or backend dependency in the current version.
+This makes the free version useful for personal workflows, local-first client tracking, and quick reference while working on deployments.
 
-## Current Status
+## Development Notes
 
-Conduit is usable as a personal deployment tracker.
-
-Implemented so far:
-
-- client list and client detail screens
-- deployment creation and editing
-- inline editing for deployment settings
-- Cloudflare tunnel creation, editing, and deletion
-- add-option sheet for deployment details
-- Keychain-backed credential storage
-- biometric/passcode-gated credential unlock
-
-## Notes
-
-If the app fails to launch after a schema change during development, delete the app from the simulator/device and run it again. This clears the old local SwiftData store.
+If the app fails to launch after a SwiftData schema change during development, delete the app from the simulator or device and run it again. This clears the old local store.
 
 The app includes an `NSFaceIDUsageDescription` entry for biometric credential unlock prompts.
