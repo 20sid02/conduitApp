@@ -13,7 +13,7 @@ Conduit tracks the practical details developers reach for while maintaining smal
 - whether a system is marked online or offline
 - admin URLs and local system ports
 - Gunicorn and Nginx routing ports
-- database names and ports
+- database names, ports, and sensitive host/token values
 - server usernames
 - Cloudflare tunnel names and ports
 - custom text, URL, port, and password fields
@@ -63,10 +63,11 @@ Custom settings are available for stack-specific details that do not fit the bui
 
 Passwords are not stored in SwiftData.
 
-Conduit stores passwords in the iOS Keychain and saves them with device-only accessibility. Credential sections are locked by default and require Face ID, Touch ID, or device passcode authentication before editing.
+Conduit stores passwords and sensitive host/token values in the iOS Keychain and saves them with device-only accessibility. Credential rows are shown beside their related settings and require Face ID, Touch ID, or device passcode authentication before editing.
 
 Current credential types:
 
+- database host/token
 - database password
 - system access password
 - admin access password

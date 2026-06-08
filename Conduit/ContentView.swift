@@ -295,7 +295,7 @@ private extension CustomSettingField {
 }
 
 private func deleteStoredCredentials(for deployment: Deployment) {
-    ["dbPassword", "systemAccessPassword", "djangoAdminPassword", "adminAccessPassword"].forEach { keySuffix in
+    ["dbHost", "dbPassword", "systemAccessPassword", "djangoAdminPassword", "adminAccessPassword"].forEach { keySuffix in
         _ = KeychainManager.delete(key: "\(deployment.id)-\(keySuffix)")
     }
 
@@ -498,6 +498,7 @@ struct AddDeploymentView: View {
     @State private var nginxPort = ""
     @State private var dbName = ""
     @State private var dbPort = ""
+    @State private var dbHost = ""
     @State private var dbPassword = ""
     @State private var username = ""
     @State private var systemAccessPassword = ""
@@ -536,6 +537,9 @@ struct AddDeploymentView: View {
 
                     TextField("Database Port", text: $dbPort)
                         .keyboardType(.numberPad)
+
+                    SecureField("Database Host / Token", text: $dbHost)
+                        .textContentType(.password)
 
                     SecureField("Database Password", text: $dbPassword)
                         .textContentType(.password)
@@ -597,6 +601,7 @@ struct AddDeploymentView: View {
 
         client.deployments.append(deployment)
         modelContext.insert(deployment)
+        savePassword(dbHost, keySuffix: "dbHost", deployment: deployment)
         savePassword(dbPassword, keySuffix: "dbPassword", deployment: deployment)
         savePassword(systemAccessPassword, keySuffix: "systemAccessPassword", deployment: deployment)
         savePassword(adminAccessPassword, keySuffix: "adminAccessPassword", deployment: deployment)
@@ -683,6 +688,15 @@ struct DeploymentDetailView: View {
 
                             DividerLine()
 
+                            SecureCredentialView(
+                                deployment: deployment,
+                                title: "Admin Password",
+                                keySuffix: "adminAccessPassword",
+                                legacyKeySuffix: "djangoAdminPassword"
+                            )
+
+                            DividerLine()
+
                             EditableRow(title: "Local System Port") {
                                 darkTextField("Not Set", text: systemPortBinding)
                                     .keyboardType(.numberPad)
@@ -717,6 +731,14 @@ struct DeploymentDetailView: View {
                             darkTextField("Not Set", text: optionalIntBinding(\.dbPort))
                                 .keyboardType(.numberPad)
                         }
+
+                        DividerLine()
+
+                        SecureCredentialView(deployment: deployment, title: "Database Host / Token", keySuffix: "dbHost")
+
+                        DividerLine()
+
+                        SecureCredentialView(deployment: deployment, title: "Database Password", keySuffix: "dbPassword")
                     }
 
                     editableSection("System Access") {
@@ -725,26 +747,13 @@ struct DeploymentDetailView: View {
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                         }
+
+                        DividerLine()
+
+                        SecureCredentialView(deployment: deployment, title: "System Password", keySuffix: "systemAccessPassword")
                     }
 
                     customSettingsSections
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        SectionTitle(title: "Secure Vault")
-
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 14) {
-                                SecureCredentialView(
-                                    deployment: deployment,
-                                    title: "Admin Password",
-                                    keySuffix: "adminAccessPassword",
-                                    legacyKeySuffix: "djangoAdminPassword"
-                                )
-                                SecureCredentialView(deployment: deployment, title: "Database Password", keySuffix: "dbPassword")
-                                SecureCredentialView(deployment: deployment, title: "System Access", keySuffix: "systemAccessPassword")
-                            }
-                        }
-                    }
 
                     VStack(alignment: .leading, spacing: 10) {
                         SectionTitle(title: "Cloudflare Tunnels")
@@ -1090,6 +1099,7 @@ struct AddDeploymentOptionView: View {
     @State private var nginxPort = ""
     @State private var dbName = ""
     @State private var dbPort = ""
+    @State private var dbHost = ""
     @State private var dbPassword = ""
     @State private var username = ""
     @State private var systemAccessPassword = ""
@@ -1140,6 +1150,9 @@ struct AddDeploymentOptionView: View {
 
                         TextField("Database Port", text: $dbPort)
                             .keyboardType(.numberPad)
+
+                        SecureField("Database Host / Token", text: $dbHost)
+                            .textContentType(.password)
 
                         SecureField("Database Password", text: $dbPassword)
                             .textContentType(.password)
@@ -1227,7 +1240,7 @@ struct AddDeploymentOptionView: View {
         case .internalRouting:
             return intValue(from: gunicornPort) == nil && intValue(from: nginxPort) == nil
         case .databaseConfig:
-            return trimmedDbName.isEmpty && intValue(from: dbPort) == nil && dbPassword.isEmpty
+            return trimmedDbName.isEmpty && intValue(from: dbPort) == nil && dbHost.isEmpty && dbPassword.isEmpty
         case .systemAccess:
             return trimmedUsername.isEmpty && systemAccessPassword.isEmpty
         case .adminAccess:
@@ -1287,6 +1300,7 @@ struct AddDeploymentOptionView: View {
                 deployment.dbPort = port
             }
 
+            savePassword(dbHost, keySuffix: "dbHost")
             savePassword(dbPassword, keySuffix: "dbPassword")
 
         case .systemAccess:
