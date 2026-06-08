@@ -54,6 +54,20 @@ The deployment list intentionally stays compact: it shows the app name and an on
 
 Conduit now uses a dark, card-based operations UI with bold headings, blue action accents, and green/red system status dots. The working design language is documented in [DESIGN.md](DESIGN.md) so future screens can keep the same visual direction.
 
+## Free Version Scope
+
+The free version is intentionally useful without a subscription:
+
+- local-only client and deployment tracking
+- manual routing, database, username, and tunnel entry
+- searchable client dashboard
+- offline Face ID/passcode credential vault
+- inline editing for deployment metadata
+- local delete flows that also clear saved credentials
+- one-tap opening for saved admin URLs
+
+Future paid features can build on top of this without weakening the free app: iCloud sync, uptime checks, Cloudflare API import, and generated handover reports.
+
 ## Offline First
 
 Conduit is designed for local, offline personal use. Server metadata is stored on device with SwiftData, and credentials are stored separately in the iOS Keychain.
@@ -78,4 +92,4 @@ Implemented so far:
 
 If the app fails to launch after a schema change during development, delete the app from the simulator/device and run it again. This clears the old local SwiftData store.
 
-For Face ID testing, the app should include an `NSFaceIDUsageDescription` entry in its app settings.
+The app includes an `NSFaceIDUsageDescription` entry for biometric credential unlock prompts.

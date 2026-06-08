@@ -137,9 +137,40 @@ private struct DividerLine: View {
     }
 }
 
+private struct EmptyStateCard: View {
+    let systemImage: String
+    let title: String
+    let message: String
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(ConduitTheme.accent)
+
+                Text(title)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(ConduitTheme.primary)
+
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(ConduitTheme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+
     @Query(sort: \Client.createdAt, order: .reverse) private var clients: [Client]
     @State private var showingAddSheet = false
+    @State private var searchText = ""
+    @State private var clientPendingDeletion: Client?
+    @State private var showingDeleteClientConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -150,14 +181,28 @@ struct ContentView: View {
                             showingAddSheet = true
                         }
 
-                        LazyVStack(spacing: 12) {
-                            ForEach(clients) { client in
-                                NavigationLink {
-                                    ClientDetailView(client: client)
-                                } label: {
-                                    ClientCard(client: client)
+                        if filteredClients.isEmpty {
+                            EmptyStateCard(
+                                systemImage: searchText.isEmpty ? "lock.square.stack" : "magnifyingglass",
+                                title: searchText.isEmpty ? "No clients yet" : "No clients found",
+                                message: searchText.isEmpty ? "Add your first client, server, or project to start mapping deployments." : "Try a different client or deployment name."
+                            )
+                        } else {
+                            LazyVStack(spacing: 12) {
+                                ForEach(filteredClients) { client in
+                                    NavigationLink {
+                                        ClientDetailView(client: client)
+                                    } label: {
+                                        ClientCard(client: client)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .contextMenu {
+                                        Button("Delete Client", systemImage: "trash", role: .destructive) {
+                                            clientPendingDeletion = client
+                                            showingDeleteClientConfirmation = true
+                                        }
+                                    }
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -168,10 +213,62 @@ struct ContentView: View {
             }
             .navigationTitle("")
             .toolbarBackground(.hidden, for: .navigationBar)
+            .searchable(text: $searchText, prompt: "Search clients")
+            .confirmationDialog(
+                "Delete this client?",
+                isPresented: $showingDeleteClientConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete Client", role: .destructive) {
+                    if let client = clientPendingDeletion {
+                        deleteClient(client)
+                    }
+                }
+
+                Button("Cancel", role: .cancel) {
+                    clientPendingDeletion = nil
+                }
+            } message: {
+                Text("This removes the client, deployments, tunnels, and saved credentials from this device.")
+            }
             .sheet(isPresented: $showingAddSheet) {
                 AddClientView()
             }
         }
+    }
+
+    private var filteredClients: [Client] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !query.isEmpty else {
+            return clients
+        }
+
+        return clients.filter { client in
+            client.name.localizedCaseInsensitiveContains(query)
+                || client.deployments.contains { deployment in
+                    deployment.displayName.localizedCaseInsensitiveContains(query)
+                }
+        }
+    }
+
+    private func deleteClient(_ client: Client) {
+        client.deployments.forEach(deleteStoredCredentials)
+        modelContext.delete(client)
+        clientPendingDeletion = nil
+    }
+}
+
+private extension Deployment {
+    var displayName: String {
+        let trimmedAppName = appName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmedAppName.isEmpty ? "Unnamed App" : trimmedAppName
+    }
+}
+
+private func deleteStoredCredentials(for deployment: Deployment) {
+    ["dbPassword", "systemAccessPassword", "djangoAdminPassword"].forEach { keySuffix in
+        _ = KeychainManager.delete(key: "\(deployment.id)-\(keySuffix)")
     }
 }
 
@@ -254,8 +351,12 @@ struct AddClientView: View {
 }
 
 struct ClientDetailView: View {
+    @Environment(\.modelContext) private var modelContext
+
     @Bindable var client: Client
     @State private var showingAddDeploymentSheet = false
+    @State private var deploymentPendingDeletion: Deployment?
+    @State private var showingDeleteDeploymentConfirmation = false
 
     var body: some View {
         ConduitBackground {
@@ -265,14 +366,28 @@ struct ClientDetailView: View {
                         showingAddDeploymentSheet = true
                     }
 
-                    LazyVStack(spacing: 12) {
-                        ForEach(client.deployments) { deployment in
-                            NavigationLink {
-                                DeploymentDetailView(deployment: deployment)
-                            } label: {
-                                DeploymentRow(deployment: deployment)
+                    if client.deployments.isEmpty {
+                        EmptyStateCard(
+                            systemImage: "server.rack",
+                            title: "No deployments yet",
+                            message: "Add the first app running for this client, then attach routing, database, tunnel, and vault details."
+                        )
+                    } else {
+                        LazyVStack(spacing: 12) {
+                            ForEach(client.deployments) { deployment in
+                                NavigationLink {
+                                    DeploymentDetailView(deployment: deployment)
+                                } label: {
+                                    DeploymentRow(deployment: deployment)
+                                }
+                                .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button("Delete Deployment", systemImage: "trash", role: .destructive) {
+                                        deploymentPendingDeletion = deployment
+                                        showingDeleteDeploymentConfirmation = true
+                                    }
+                                }
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -283,9 +398,33 @@ struct ClientDetailView: View {
         }
         .navigationTitle("")
         .toolbarBackground(.hidden, for: .navigationBar)
+        .confirmationDialog(
+            "Delete this deployment?",
+            isPresented: $showingDeleteDeploymentConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Deployment", role: .destructive) {
+                if let deployment = deploymentPendingDeletion {
+                    deleteDeployment(deployment)
+                }
+            }
+
+            Button("Cancel", role: .cancel) {
+                deploymentPendingDeletion = nil
+            }
+        } message: {
+            Text("This removes the deployment, tunnels, and saved credentials from this device.")
+        }
         .sheet(isPresented: $showingAddDeploymentSheet) {
             AddDeploymentView(client: client)
         }
+    }
+
+    private func deleteDeployment(_ deployment: Deployment) {
+        deleteStoredCredentials(for: deployment)
+        client.deployments.removeAll { $0.id == deployment.id }
+        modelContext.delete(deployment)
+        deploymentPendingDeletion = nil
     }
 }
 
@@ -307,8 +446,7 @@ private struct DeploymentRow: View {
     }
 
     private var deploymentDisplayName: String {
-        let trimmedAppName = deployment.appName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return trimmedAppName.isEmpty ? "Unnamed App" : trimmedAppName
+        deployment.displayName
     }
 }
 
@@ -398,6 +536,7 @@ struct AddDeploymentView: View {
                     Button("Save") {
                         saveDeployment()
                     }
+                    .disabled(trimmedAppName.isEmpty)
                 }
             }
         }
@@ -409,7 +548,7 @@ struct AddDeploymentView: View {
         let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
         let deployment = Deployment(
             client: client,
-            appName: appName.trimmingCharacters(in: .whitespacesAndNewlines),
+            appName: trimmedAppName,
             dateDeployed: Date(),
             isOnline: isOnline,
             adminURLOverride: trimmedURL.isEmpty ? nil : trimmedURL,
@@ -429,6 +568,10 @@ struct AddDeploymentView: View {
         dismiss()
     }
 
+    private var trimmedAppName: String {
+        appName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private func intValue(from text: String) -> Int? {
         Int(text.trimmingCharacters(in: .whitespacesAndNewlines))
     }
@@ -444,6 +587,7 @@ struct AddDeploymentView: View {
 
 struct DeploymentDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.openURL) private var openURL
 
     @Bindable var deployment: Deployment
     @State private var showingAddOptionSheet = false
@@ -485,6 +629,21 @@ struct DeploymentDetailView: View {
                                     .textInputAutocapitalization(.never)
                                     .keyboardType(.URL)
                                     .autocorrectionDisabled()
+                            }
+
+                            if let adminURL {
+                                DividerLine()
+
+                                Button {
+                                    openURL(adminURL)
+                                } label: {
+                                    Label("Open Admin URL", systemImage: "safari")
+                                        .font(.subheadline.weight(.semibold))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.vertical, 8)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(ConduitTheme.accent)
                             }
 
                             DividerLine()
@@ -572,6 +731,15 @@ struct DeploymentDetailView: View {
                                                 .foregroundStyle(ConduitTheme.secondary)
                                                 .fontWeight(.semibold)
                                                 .frame(width: 72)
+
+                                            Button(role: .destructive) {
+                                                deleteTunnel(tunnel)
+                                            } label: {
+                                                Image(systemName: "trash")
+                                                    .font(.subheadline.weight(.semibold))
+                                                    .foregroundStyle(ConduitTheme.offline)
+                                            }
+                                            .buttonStyle(.plain)
                                         }
                                         .padding(.vertical, 9)
                                         .swipeActions {
@@ -616,6 +784,20 @@ struct DeploymentDetailView: View {
 
     private var adminURLOverrideBinding: Binding<String> {
         optionalStringBinding(\.adminURLOverride)
+    }
+
+    private var adminURL: URL? {
+        let rawValue = deployment.adminURLOverride?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        guard !rawValue.isEmpty else {
+            return nil
+        }
+
+        if let url = URL(string: rawValue), url.scheme != nil {
+            return url
+        }
+
+        return URL(string: "https://\(rawValue)")
     }
 
     private func editableSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
