@@ -16,6 +16,7 @@ Conduit tracks the practical details developers reach for while maintaining smal
 - database names and ports
 - server usernames
 - Cloudflare tunnel names and ports
+- custom text, URL, port, and password fields
 - sensitive passwords stored separately in the iOS Keychain
 
 It is not an SSH client, uptime monitor, Cloudflare dashboard, or CI/CD tracker. Conduit Free is the offline infrastructure map that sits between those tools.
@@ -31,6 +32,7 @@ Conduit Free includes:
 - inline editing for deployment metadata
 - Cloudflare tunnel creation, editing, and deletion
 - one-tap opening for saved admin URLs
+- custom settings sections with text, URL, port, and password fields
 - local delete flows that also clear saved credentials
 - Face ID, Touch ID, or passcode-gated credential access
 
@@ -39,6 +41,7 @@ The free version does not include:
 - iCloud sync
 - active uptime monitoring
 - Cloudflare API imports
+- reusable custom field templates
 - PDF or markdown handover exports
 - subscription-only automation features
 
@@ -54,6 +57,8 @@ Conduit organizes data into three levels:
 
 Each deployment can store routing, database, system access, tunnel, and admin URL details. The deployment list intentionally stays compact: it shows the app name and online/offline status.
 
+Custom settings are available for stack-specific details that do not fit the built-in sections. A custom field can be plain text, a clickable URL, a port, or a Keychain-backed password.
+
 ## Credential Safety
 
 Passwords are not stored in SwiftData.
@@ -64,7 +69,8 @@ Current credential types:
 
 - database password
 - system access password
-- Django admin superuser password
+- admin access password
+- custom password fields
 
 When a deployment or client is deleted, Conduit also deletes the related saved credentials from the Keychain.
 

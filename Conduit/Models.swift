@@ -38,6 +38,9 @@ final class Deployment {
     @Relationship(deleteRule: .cascade, inverse: \Tunnel.deployment)
     var tunnels: [Tunnel] = []
 
+    @Relationship(deleteRule: .cascade, inverse: \CustomSettingSection.deployment)
+    var customSections: [CustomSettingSection] = []
+
     init(
         id: UUID = UUID(),
         client: Client,
@@ -64,6 +67,74 @@ final class Deployment {
         self.dbName = dbName
         self.dbPort = dbPort
         self.username = username
+    }
+}
+
+@Model
+final class CustomSettingSection {
+    @Attribute(.unique) var id: UUID
+    var title: String
+    var sortOrder: Int
+
+    var deployment: Deployment
+
+    @Relationship(deleteRule: .cascade, inverse: \CustomSettingField.section)
+    var fields: [CustomSettingField] = []
+
+    init(id: UUID = UUID(), deployment: Deployment, title: String, sortOrder: Int = 0) {
+        self.id = id
+        self.deployment = deployment
+        self.title = title
+        self.sortOrder = sortOrder
+    }
+}
+
+@Model
+final class CustomSettingField {
+    @Attribute(.unique) var id: UUID
+    var label: String
+    var value: String?
+    var typeRawValue: String
+    var sortOrder: Int
+
+    var section: CustomSettingSection
+
+    init(
+        id: UUID = UUID(),
+        section: CustomSettingSection,
+        label: String,
+        value: String? = nil,
+        type: CustomSettingFieldType,
+        sortOrder: Int = 0
+    ) {
+        self.id = id
+        self.section = section
+        self.label = label
+        self.value = value
+        self.typeRawValue = type.rawValue
+        self.sortOrder = sortOrder
+    }
+}
+
+enum CustomSettingFieldType: String, CaseIterable, Identifiable {
+    case text
+    case url
+    case port
+    case password
+
+    var id: Self { self }
+
+    var displayName: String {
+        switch self {
+        case .text:
+            "Text"
+        case .url:
+            "URL"
+        case .port:
+            "Port"
+        case .password:
+            "Password"
+        }
     }
 }
 

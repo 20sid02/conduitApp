@@ -266,10 +266,45 @@ private extension Deployment {
     }
 }
 
+private extension CustomSettingField {
+    var type: CustomSettingFieldType {
+        get { CustomSettingFieldType(rawValue: typeRawValue) ?? .text }
+        set { typeRawValue = newValue.rawValue }
+    }
+
+    var keychainKey: String {
+        "customField-\(id.uuidString)"
+    }
+
+    var resolvedURL: URL? {
+        guard type == .url else {
+            return nil
+        }
+
+        let rawValue = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !rawValue.isEmpty else {
+            return nil
+        }
+
+        if let url = URL(string: rawValue), url.scheme != nil {
+            return url
+        }
+
+        return URL(string: "https://\(rawValue)")
+    }
+}
+
 private func deleteStoredCredentials(for deployment: Deployment) {
-    ["dbPassword", "systemAccessPassword", "djangoAdminPassword"].forEach { keySuffix in
+    ["dbPassword", "systemAccessPassword", "djangoAdminPassword", "adminAccessPassword"].forEach { keySuffix in
         _ = KeychainManager.delete(key: "\(deployment.id)-\(keySuffix)")
     }
+
+    deployment.customSections
+        .flatMap(\.fields)
+        .filter { $0.type == .password }
+        .forEach { field in
+            _ = KeychainManager.delete(key: field.keychainKey)
+        }
 }
 
 private struct ClientCard: View {
@@ -466,7 +501,7 @@ struct AddDeploymentView: View {
     @State private var dbPassword = ""
     @State private var username = ""
     @State private var systemAccessPassword = ""
-    @State private var djangoAdminPassword = ""
+    @State private var adminAccessPassword = ""
 
     var body: some View {
         NavigationStack {
@@ -515,8 +550,8 @@ struct AddDeploymentView: View {
                         .textContentType(.password)
                 }
 
-                Section("Django Admin") {
-                    SecureField("Superuser Password", text: $djangoAdminPassword)
+                Section("Admin Access") {
+                    SecureField("Admin Password", text: $adminAccessPassword)
                         .textContentType(.password)
                 }
             }
@@ -564,7 +599,7 @@ struct AddDeploymentView: View {
         modelContext.insert(deployment)
         savePassword(dbPassword, keySuffix: "dbPassword", deployment: deployment)
         savePassword(systemAccessPassword, keySuffix: "systemAccessPassword", deployment: deployment)
-        savePassword(djangoAdminPassword, keySuffix: "djangoAdminPassword", deployment: deployment)
+        savePassword(adminAccessPassword, keySuffix: "adminAccessPassword", deployment: deployment)
         dismiss()
     }
 
@@ -692,12 +727,19 @@ struct DeploymentDetailView: View {
                         }
                     }
 
+                    customSettingsSections
+
                     VStack(alignment: .leading, spacing: 10) {
                         SectionTitle(title: "Secure Vault")
 
                         GlassCard {
                             VStack(alignment: .leading, spacing: 14) {
-                                SecureCredentialView(deployment: deployment, title: "Superuser", keySuffix: "djangoAdminPassword")
+                                SecureCredentialView(
+                                    deployment: deployment,
+                                    title: "Admin Password",
+                                    keySuffix: "adminAccessPassword",
+                                    legacyKeySuffix: "djangoAdminPassword"
+                                )
                                 SecureCredentialView(deployment: deployment, title: "Database Password", keySuffix: "dbPassword")
                                 SecureCredentialView(deployment: deployment, title: "System Access", keySuffix: "systemAccessPassword")
                             }
@@ -800,6 +842,141 @@ struct DeploymentDetailView: View {
         return URL(string: "https://\(rawValue)")
     }
 
+    private var sortedCustomSections: [CustomSettingSection] {
+        deployment.customSections.sorted {
+            if $0.sortOrder == $1.sortOrder {
+                return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+            }
+
+            return $0.sortOrder < $1.sortOrder
+        }
+    }
+
+    private var customSettingsSections: some View {
+        Group {
+            ForEach(sortedCustomSections) { section in
+                @Bindable var editableSection = section
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        TextField("Custom Section", text: $editableSection.title)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(ConduitTheme.secondary)
+                            .tint(ConduitTheme.accent)
+
+                        Button(role: .destructive) {
+                            deleteCustomSection(section)
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(ConduitTheme.offline)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 2)
+
+                    GlassCard {
+                        if section.fields.isEmpty {
+                            Text("No custom fields")
+                                .foregroundStyle(ConduitTheme.muted)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 8)
+                        } else {
+                            VStack(spacing: 0) {
+                                ForEach(Array(sortedFields(for: section).enumerated()), id: \.element.id) { index, field in
+                                    customFieldRow(field)
+
+                                    if index < section.fields.count - 1 {
+                                        DividerLine()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func sortedFields(for section: CustomSettingSection) -> [CustomSettingField] {
+        section.fields.sorted {
+            if $0.sortOrder == $1.sortOrder {
+                return $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending
+            }
+
+            return $0.sortOrder < $1.sortOrder
+        }
+    }
+
+    private func customFieldRow(_ field: CustomSettingField) -> some View {
+        @Bindable var editableField = field
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                TextField("Label", text: $editableField.label)
+                    .foregroundStyle(ConduitTheme.primary)
+                    .fontWeight(.semibold)
+                    .tint(ConduitTheme.accent)
+
+                Text(field.type.displayName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(ConduitTheme.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.white.opacity(0.08), in: Capsule())
+
+                Button(role: .destructive) {
+                    deleteCustomField(field)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(ConduitTheme.offline)
+                }
+                .buttonStyle(.plain)
+            }
+
+            switch field.type {
+            case .password:
+                SecureCredentialView(
+                    deployment: deployment,
+                    title: field.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Password" : field.label,
+                    keySuffix: field.keychainKey,
+                    keychainKey: field.keychainKey
+                )
+
+            case .url:
+                HStack(spacing: 10) {
+                    customValueField("URL", text: customFieldValueBinding(for: field))
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+
+                    if let url = field.resolvedURL {
+                        Button {
+                            openURL(url)
+                        } label: {
+                            Image(systemName: "safari")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(ConduitTheme.accent)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Open URL")
+                    }
+                }
+
+            case .port:
+                customValueField("Port", text: customFieldValueBinding(for: field))
+                    .keyboardType(.numberPad)
+
+            case .text:
+                customValueField("Value", text: customFieldValueBinding(for: field))
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            }
+        }
+        .padding(.vertical, 9)
+    }
+
     private func editableSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionTitle(title: title)
@@ -817,6 +994,22 @@ struct DeploymentDetailView: View {
             .foregroundStyle(ConduitTheme.secondary)
             .fontWeight(.semibold)
             .tint(ConduitTheme.accent)
+    }
+
+    private func customValueField(_ placeholder: String, text: Binding<String>) -> some View {
+        TextField(placeholder, text: text)
+            .foregroundStyle(ConduitTheme.secondary)
+            .fontWeight(.semibold)
+            .tint(ConduitTheme.accent)
+    }
+
+    private func customFieldValueBinding(for field: CustomSettingField) -> Binding<String> {
+        Binding {
+            field.value ?? ""
+        } set: { newValue in
+            let trimmedValue = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            field.value = trimmedValue.isEmpty ? nil : trimmedValue
+        }
     }
 
     private func optionalIntBinding(_ keyPath: ReferenceWritableKeyPath<Deployment, Int?>) -> Binding<String> {
@@ -853,6 +1046,26 @@ struct DeploymentDetailView: View {
         deployment.tunnels.removeAll { $0.id == tunnel.id }
         modelContext.delete(tunnel)
     }
+
+    private func deleteCustomSection(_ section: CustomSettingSection) {
+        section.fields
+            .filter { $0.type == .password }
+            .forEach { field in
+                _ = KeychainManager.delete(key: field.keychainKey)
+            }
+
+        deployment.customSections.removeAll { $0.id == section.id }
+        modelContext.delete(section)
+    }
+
+    private func deleteCustomField(_ field: CustomSettingField) {
+        if field.type == .password {
+            _ = KeychainManager.delete(key: field.keychainKey)
+        }
+
+        field.section.fields.removeAll { $0.id == field.id }
+        modelContext.delete(field)
+    }
 }
 
 private enum DeploymentAddOption: String, CaseIterable, Identifiable {
@@ -860,7 +1073,8 @@ private enum DeploymentAddOption: String, CaseIterable, Identifiable {
     case internalRouting = "Internal Routing"
     case databaseConfig = "Database Config"
     case systemAccess = "System Access"
-    case djangoAdmin = "Django Admin"
+    case adminAccess = "Admin Access"
+    case customSetting = "Custom Setting"
 
     var id: Self { self }
 }
@@ -879,7 +1093,12 @@ struct AddDeploymentOptionView: View {
     @State private var dbPassword = ""
     @State private var username = ""
     @State private var systemAccessPassword = ""
-    @State private var djangoAdminPassword = ""
+    @State private var adminAccessPassword = ""
+    @State private var customSectionTitle = ""
+    @State private var customFieldLabel = ""
+    @State private var customFieldValue = ""
+    @State private var customFieldPassword = ""
+    @State private var customFieldType: CustomSettingFieldType = .text
 
     var body: some View {
         NavigationStack {
@@ -936,10 +1155,46 @@ struct AddDeploymentOptionView: View {
                             .textContentType(.password)
                     }
 
-                case .djangoAdmin:
-                    Section("Django Admin") {
-                        SecureField("Superuser Password", text: $djangoAdminPassword)
+                case .adminAccess:
+                    Section("Admin Access") {
+                        SecureField("Admin Password", text: $adminAccessPassword)
                             .textContentType(.password)
+                    }
+
+                case .customSetting:
+                    Section("Custom Setting") {
+                        TextField("Section Name", text: $customSectionTitle, prompt: Text("Hosting Panel"))
+                            .textInputAutocapitalization(.words)
+
+                        TextField("Field Label", text: $customFieldLabel, prompt: Text("Dashboard URL"))
+                            .textInputAutocapitalization(.words)
+
+                        Picker("Field Type", selection: $customFieldType) {
+                            ForEach(CustomSettingFieldType.allCases) { type in
+                                Text(type.displayName).tag(type)
+                            }
+                        }
+
+                        switch customFieldType {
+                        case .password:
+                            SecureField("Password", text: $customFieldPassword)
+                                .textContentType(.password)
+
+                        case .url:
+                            TextField("URL", text: $customFieldValue, prompt: Text("https://panel.example.com"))
+                                .keyboardType(.URL)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+
+                        case .port:
+                            TextField("Port", text: $customFieldValue, prompt: Text("8080"))
+                                .keyboardType(.numberPad)
+
+                        case .text:
+                            TextField("Value", text: $customFieldValue)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                        }
                     }
                 }
             }
@@ -975,8 +1230,12 @@ struct AddDeploymentOptionView: View {
             return trimmedDbName.isEmpty && intValue(from: dbPort) == nil && dbPassword.isEmpty
         case .systemAccess:
             return trimmedUsername.isEmpty && systemAccessPassword.isEmpty
-        case .djangoAdmin:
-            return djangoAdminPassword.isEmpty
+        case .adminAccess:
+            return adminAccessPassword.isEmpty
+        case .customSetting:
+            return trimmedCustomSectionTitle.isEmpty
+                || trimmedCustomFieldLabel.isEmpty
+                || (customFieldType == .password ? customFieldPassword.isEmpty : false)
         }
     }
 
@@ -990,6 +1249,14 @@ struct AddDeploymentOptionView: View {
 
     private var trimmedUsername: String {
         username.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedCustomSectionTitle: String {
+        customSectionTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedCustomFieldLabel: String {
+        customFieldLabel.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func saveOption() {
@@ -1026,8 +1293,11 @@ struct AddDeploymentOptionView: View {
             deployment.username = trimmedUsername.isEmpty ? nil : trimmedUsername
             savePassword(systemAccessPassword, keySuffix: "systemAccessPassword")
 
-        case .djangoAdmin:
-            savePassword(djangoAdminPassword, keySuffix: "djangoAdminPassword")
+        case .adminAccess:
+            savePassword(adminAccessPassword, keySuffix: "adminAccessPassword")
+
+        case .customSetting:
+            saveCustomSetting()
         }
 
         dismiss()
@@ -1044,14 +1314,52 @@ struct AddDeploymentOptionView: View {
 
         _ = KeychainManager.save(key: "\(deployment.id)-\(keySuffix)", value: password)
     }
+
+    private func saveCustomSetting() {
+        let section = existingCustomSection() ?? {
+            let newSection = CustomSettingSection(
+                deployment: deployment,
+                title: trimmedCustomSectionTitle,
+                sortOrder: deployment.customSections.count
+            )
+            deployment.customSections.append(newSection)
+            return newSection
+        }()
+
+        let field = CustomSettingField(
+            section: section,
+            label: trimmedCustomFieldLabel,
+            value: customFieldType == .password ? nil : normalizedCustomFieldValue(),
+            type: customFieldType,
+            sortOrder: section.fields.count
+        )
+
+        section.fields.append(field)
+
+        if customFieldType == .password {
+            _ = KeychainManager.save(key: field.keychainKey, value: customFieldPassword)
+        }
+    }
+
+    private func existingCustomSection() -> CustomSettingSection? {
+        deployment.customSections.first {
+            $0.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                .localizedCaseInsensitiveCompare(trimmedCustomSectionTitle) == .orderedSame
+        }
+    }
+
+    private func normalizedCustomFieldValue() -> String? {
+        let trimmedValue = customFieldValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedValue.isEmpty ? nil : trimmedValue
+    }
 }
 
 #Preview("ContentView") {
     ContentView()
-        .modelContainer(for: [Client.self, Deployment.self, Tunnel.self], inMemory: true)
+        .modelContainer(for: [Client.self, Deployment.self, Tunnel.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
 }
 
 #Preview("AddClientView") {
     AddClientView()
-        .modelContainer(for: [Client.self, Deployment.self, Tunnel.self], inMemory: true)
+        .modelContainer(for: [Client.self, Deployment.self, Tunnel.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
 }

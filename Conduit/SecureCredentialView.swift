@@ -9,6 +9,8 @@ struct SecureCredentialView: View {
     let deployment: Deployment
     let title: String
     let keySuffix: String
+    let keychainKeyOverride: String?
+    let legacyKeySuffix: String?
 
     @State private var isUnlocked = false
     @State private var password = ""
@@ -16,10 +18,18 @@ struct SecureCredentialView: View {
 
     private let authManager = BiometricAuthManager()
 
-    init(deployment: Deployment, title: String = "Database Password", keySuffix: String = "dbPassword") {
+    init(
+        deployment: Deployment,
+        title: String = "Database Password",
+        keySuffix: String = "dbPassword",
+        keychainKey: String? = nil,
+        legacyKeySuffix: String? = nil
+    ) {
         self.deployment = deployment
         self.title = title
         self.keySuffix = keySuffix
+        self.keychainKeyOverride = keychainKey
+        self.legacyKeySuffix = legacyKeySuffix
     }
 
     var body: some View {
@@ -96,7 +106,19 @@ struct SecureCredentialView: View {
     }
 
     private var keychainKey: String {
-        "\(deployment.id)-\(keySuffix)"
+        if let keychainKeyOverride {
+            return keychainKeyOverride
+        }
+
+        return "\(deployment.id)-\(keySuffix)"
+    }
+
+    private var legacyKeychainKey: String? {
+        guard let legacyKeySuffix else {
+            return nil
+        }
+
+        return "\(deployment.id)-\(legacyKeySuffix)"
     }
 
     private func unlockCredentials() {
@@ -109,7 +131,9 @@ struct SecureCredentialView: View {
                 return
             }
 
-            password = KeychainManager.read(key: keychainKey) ?? ""
+            password = KeychainManager.read(key: keychainKey)
+                ?? legacyKeychainKey.flatMap { KeychainManager.read(key: $0) }
+                ?? ""
             isPasswordVisible = false
             isUnlocked = true
         }

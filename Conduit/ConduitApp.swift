@@ -15,6 +15,8 @@ struct ConduitApp: App {
             Client.self,
             Deployment.self,
             Tunnel.self,
+            CustomSettingSection.self,
+            CustomSettingField.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
