@@ -46,13 +46,24 @@ private struct ConduitBackground<Content: View>: View {
 
 private struct ScreenHeader: View {
     let title: String
+    var logoName: String?
     var action: (() -> Void)?
 
     var body: some View {
         HStack(alignment: .center) {
-            Text(title)
-                .font(.system(size: 34, weight: .bold, design: .default))
-                .foregroundStyle(ConduitTheme.primary)
+            HStack(spacing: 10) {
+                if let logoName {
+                    Image(logoName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 34, height: 34)
+                        .accessibilityHidden(true)
+                }
+
+                Text(title)
+                    .font(.system(size: 34, weight: .bold, design: .default))
+                    .foregroundStyle(ConduitTheme.primary)
+            }
 
             Spacer()
 
@@ -180,6 +191,7 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         ScreenHeader(
                             title: "Client",
+                            logoName: "AppLogo",
                             action: clients.count < FreeTierLimits.maxClients ? {
                                 showingAddSheet = true
                             } : nil
@@ -217,6 +229,8 @@ struct ContentView: View {
                                 }
                             }
                         }
+
+                        ArksoftFooter()
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 18)
@@ -361,6 +375,25 @@ struct ContentView: View {
         _ = KeychainManager.save(key: "\(deployment.id)-dbPassword", value: "sample-db-password")
         _ = KeychainManager.save(key: "\(deployment.id)-systemAccessPassword", value: "sample-system-password")
         _ = KeychainManager.save(key: "\(deployment.id)-adminAccessPassword", value: "sample-admin-password")
+    }
+}
+
+private struct ArksoftFooter: View {
+    var body: some View {
+        HStack {
+            Spacer()
+
+            Image("ArksoftLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 24)
+                .opacity(0.56)
+                .accessibilityLabel("Arksoft")
+
+            Spacer()
+        }
+        .padding(.top, 12)
+        .padding(.bottom, 4)
     }
 }
 

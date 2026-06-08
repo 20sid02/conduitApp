@@ -84,7 +84,9 @@ When a deployment or client is deleted, Conduit also deletes the related saved c
 
 ## Interface Direction
 
-Conduit uses a dark, card-based operations UI with bold headings, blue action accents, and green/red system status dots. The design direction is documented in [DESIGN.md](DESIGN.md) and should guide future free and Pro screens.
+Conduit uses a dark, card-based operations UI with bold headings, blue action accents, green/red system status dots, and lightweight Conduit/Arksoft branding. The no-background app and company logos are used inside the app so the product feels owned without getting in the way of server work.
+
+The design direction is documented in [DESIGN.md](DESIGN.md) and should guide future free and Pro screens.
 
 ## Offline First
 
