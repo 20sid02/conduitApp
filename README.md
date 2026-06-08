@@ -11,7 +11,7 @@ Conduit tracks the practical details developers reach for while maintaining smal
 - which clients or projects exist
 - which apps are deployed for each client
 - whether a system is marked online or offline
-- admin URLs and local system ports
+- deployment URLs and local system ports
 - internal service names and ports
 - database names, ports, and sensitive host/token values
 - server and admin usernames
@@ -30,7 +30,7 @@ Conduit Free includes:
 - dark card-based operations UI
 - inline editing for deployment metadata
 - flexible internal routing with service-name and port rows
-- one-tap opening for saved admin URLs
+- one-tap opening for saved deployment URLs
 - custom settings sections with text, URL, port, and password fields
 - local delete flows that also clear saved credentials
 - Face ID, Touch ID, or passcode-gated credential access
@@ -62,7 +62,7 @@ Conduit organizes data into three levels:
 - **Deployments**: an app or system running for a client.
 - **Internal Routes**: service names and ports for local routing.
 
-Each deployment can store routing, database, system access, admin access, custom settings, and admin URL details. The deployment list intentionally stays compact: it shows the app name and online/offline status.
+Each deployment can store routing, database, system access, admin access, custom settings, and deployment URL details. The deployment list intentionally stays compact: it shows the app name and online/offline status.
 
 Custom settings are available for stack-specific details that do not fit the built-in sections. A custom field can be plain text, a clickable URL, a port, or a Keychain-backed password.
 

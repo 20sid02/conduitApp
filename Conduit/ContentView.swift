@@ -289,7 +289,7 @@ struct ContentView: View {
             appName: "Client Portal",
             dateDeployed: Date().addingTimeInterval(-7_200),
             isOnline: true,
-            adminURLOverride: "portal.acme.test/admin",
+            adminURLOverride: "portal.acme.test",
             systemPort: 8080,
             dbName: "acme_portal",
             dbPort: 5432,
@@ -301,7 +301,7 @@ struct ContentView: View {
             appName: "Billing API",
             dateDeployed: Date().addingTimeInterval(-3_600),
             isOnline: false,
-            adminURLOverride: "billing.acme.test/admin",
+            adminURLOverride: "billing.acme.test",
             systemPort: 9000,
             dbName: "billing",
             dbPort: 5432,
@@ -651,7 +651,7 @@ struct AddDeploymentView: View {
 
                     Toggle("Online System", isOn: $isOnline)
 
-                    TextField("Admin URL Override", text: $adminURLOverride)
+                    TextField("Deployment URL", text: $adminURLOverride)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                         .autocorrectionDisabled()
@@ -836,20 +836,20 @@ struct DeploymentDetailView: View {
 
                             DividerLine()
 
-                            EditableRow(title: "Admin URL") {
+                            EditableRow(title: "Deployment URL") {
                                 darkTextField("None", text: adminURLOverrideBinding)
                                     .textInputAutocapitalization(.never)
                                     .keyboardType(.URL)
                                     .autocorrectionDisabled()
                             }
 
-                            if let adminURL {
+                            if let deploymentURL {
                                 DividerLine()
 
                                 Button {
-                                    openURL(adminURL)
+                                    openURL(deploymentURL)
                                 } label: {
-                                    Label("Open Admin URL", systemImage: "safari")
+                                    Label("Open Deployment URL", systemImage: "safari")
                                         .font(.subheadline.weight(.semibold))
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                         .padding(.vertical, 8)
@@ -952,7 +952,7 @@ struct DeploymentDetailView: View {
         optionalStringBinding(\.adminURLOverride)
     }
 
-    private var adminURL: URL? {
+    private var deploymentURL: URL? {
         let rawValue = deployment.adminURLOverride?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         guard !rawValue.isEmpty else {
