@@ -494,14 +494,19 @@ struct AddDeploymentView: View {
     @State private var isOnline = true
     @State private var adminURLOverride = ""
     @State private var systemPort = ""
-    @State private var gunicornPort = ""
-    @State private var nginxPort = ""
+    @State private var routeOneName = ""
+    @State private var routeOnePort = ""
+    @State private var routeTwoName = ""
+    @State private var routeTwoPort = ""
+    @State private var routeThreeName = ""
+    @State private var routeThreePort = ""
     @State private var dbName = ""
     @State private var dbPort = ""
     @State private var dbHost = ""
     @State private var dbPassword = ""
     @State private var username = ""
     @State private var systemAccessPassword = ""
+    @State private var adminUsername = ""
     @State private var adminAccessPassword = ""
 
     var body: some View {
@@ -523,11 +528,9 @@ struct AddDeploymentView: View {
                 }
 
                 Section("Internal Routing") {
-                    TextField("Gunicorn Port", text: $gunicornPort)
-                        .keyboardType(.numberPad)
-
-                    TextField("Nginx Port", text: $nginxPort)
-                        .keyboardType(.numberPad)
+                    routeInputRow(serviceName: $routeOneName, port: $routeOnePort)
+                    routeInputRow(serviceName: $routeTwoName, port: $routeTwoPort)
+                    routeInputRow(serviceName: $routeThreeName, port: $routeThreePort)
                 }
 
                 Section("Database Config") {
@@ -555,6 +558,10 @@ struct AddDeploymentView: View {
                 }
 
                 Section("Admin Access") {
+                    TextField("Admin Username", text: $adminUsername)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+
                     SecureField("Admin Password", text: $adminAccessPassword)
                         .textContentType(.password)
                 }
@@ -585,6 +592,7 @@ struct AddDeploymentView: View {
         let trimmedURL = adminURLOverride.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDbName = dbName.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedAdminUsername = adminUsername.trimmingCharacters(in: .whitespacesAndNewlines)
         let deployment = Deployment(
             client: client,
             appName: trimmedAppName,
@@ -592,15 +600,17 @@ struct AddDeploymentView: View {
             isOnline: isOnline,
             adminURLOverride: trimmedURL.isEmpty ? nil : trimmedURL,
             systemPort: intValue(from: systemPort),
-            gunicornPort: intValue(from: gunicornPort),
-            nginxPort: intValue(from: nginxPort),
             dbName: trimmedDbName.isEmpty ? nil : trimmedDbName,
             dbPort: intValue(from: dbPort),
+            adminUsername: trimmedAdminUsername.isEmpty ? nil : trimmedAdminUsername,
             username: trimmedUsername.isEmpty ? nil : trimmedUsername
         )
 
         client.deployments.append(deployment)
         modelContext.insert(deployment)
+        saveRoute(serviceName: routeOneName, port: routeOnePort, deployment: deployment, sortOrder: 0)
+        saveRoute(serviceName: routeTwoName, port: routeTwoPort, deployment: deployment, sortOrder: 1)
+        saveRoute(serviceName: routeThreeName, port: routeThreePort, deployment: deployment, sortOrder: 2)
         savePassword(dbHost, keySuffix: "dbHost", deployment: deployment)
         savePassword(dbPassword, keySuffix: "dbPassword", deployment: deployment)
         savePassword(systemAccessPassword, keySuffix: "systemAccessPassword", deployment: deployment)
@@ -612,8 +622,37 @@ struct AddDeploymentView: View {
         appName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private func routeInputRow(serviceName: Binding<String>, port: Binding<String>) -> some View {
+        HStack(spacing: 12) {
+            TextField("Service Name", text: serviceName, prompt: Text("Web app"))
+                .textInputAutocapitalization(.words)
+
+            TextField("Port", text: port, prompt: Text("8000"))
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 92)
+        }
+    }
+
     private func intValue(from text: String) -> Int? {
         Int(text.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    private func saveRoute(serviceName: String, port: String, deployment: Deployment, sortOrder: Int) {
+        let trimmedServiceName = serviceName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedServiceName.isEmpty, let port = intValue(from: port) else {
+            return
+        }
+
+        let route = InternalRoute(
+            deployment: deployment,
+            serviceName: trimmedServiceName,
+            port: port,
+            sortOrder: sortOrder
+        )
+        deployment.internalRoutes.append(route)
+        modelContext.insert(route)
     }
 
     private func savePassword(_ password: String, keySuffix: String, deployment: Deployment) {
@@ -697,6 +736,14 @@ struct DeploymentDetailView: View {
 
                             DividerLine()
 
+                            EditableRow(title: "Admin Username") {
+                                darkTextField("Not Set", text: optionalStringBinding(\.adminUsername))
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                            }
+
+                            DividerLine()
+
                             EditableRow(title: "Local System Port") {
                                 darkTextField("Not Set", text: systemPortBinding)
                                     .keyboardType(.numberPad)
@@ -704,19 +751,7 @@ struct DeploymentDetailView: View {
                         }
                     }
 
-                    editableSection("Internal Routing") {
-                        EditableRow(title: "Gunicorn") {
-                            darkTextField("Not Set", text: optionalIntBinding(\.gunicornPort))
-                                .keyboardType(.numberPad)
-                        }
-
-                        DividerLine()
-
-                        EditableRow(title: "Nginx") {
-                            darkTextField("Not Set", text: optionalIntBinding(\.nginxPort))
-                                .keyboardType(.numberPad)
-                        }
-                    }
+                    internalRoutingSection
 
                     editableSection("Database Config") {
                         EditableRow(title: "Database Name") {
@@ -858,6 +893,65 @@ struct DeploymentDetailView: View {
             }
 
             return $0.sortOrder < $1.sortOrder
+        }
+    }
+
+    private var sortedInternalRoutes: [InternalRoute] {
+        deployment.internalRoutes.sorted {
+            if $0.sortOrder == $1.sortOrder {
+                return $0.serviceName.localizedCaseInsensitiveCompare($1.serviceName) == .orderedAscending
+            }
+
+            return $0.sortOrder < $1.sortOrder
+        }
+    }
+
+    private var internalRoutingSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionTitle(title: "Internal Routing")
+
+            GlassCard {
+                if deployment.internalRoutes.isEmpty {
+                    Text("No internal services configured")
+                        .foregroundStyle(ConduitTheme.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 8)
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(Array(sortedInternalRoutes.enumerated()), id: \.element.id) { index, route in
+                            @Bindable var editableRoute = route
+
+                            HStack(spacing: 12) {
+                                TextField("Service Name", text: $editableRoute.serviceName)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(ConduitTheme.primary)
+                                    .textInputAutocapitalization(.words)
+
+                                TextField("Port", text: internalRoutePortBinding(for: editableRoute))
+                                    .keyboardType(.numberPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .foregroundStyle(ConduitTheme.secondary)
+                                    .fontWeight(.semibold)
+                                    .frame(width: 72)
+
+                                Button(role: .destructive) {
+                                    deleteInternalRoute(route)
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(ConduitTheme.offline)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.vertical, 9)
+
+                            if index < sortedInternalRoutes.count - 1 {
+                                DividerLine()
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1051,9 +1145,26 @@ struct DeploymentDetailView: View {
         }
     }
 
+    private func internalRoutePortBinding(for route: InternalRoute) -> Binding<String> {
+        Binding {
+            String(route.port)
+        } set: { newValue in
+            let trimmedValue = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if let port = Int(trimmedValue) {
+                route.port = port
+            }
+        }
+    }
+
     private func deleteTunnel(_ tunnel: Tunnel) {
         deployment.tunnels.removeAll { $0.id == tunnel.id }
         modelContext.delete(tunnel)
+    }
+
+    private func deleteInternalRoute(_ route: InternalRoute) {
+        deployment.internalRoutes.removeAll { $0.id == route.id }
+        modelContext.delete(route)
     }
 
     private func deleteCustomSection(_ section: CustomSettingSection) {
@@ -1078,7 +1189,6 @@ struct DeploymentDetailView: View {
 }
 
 private enum DeploymentAddOption: String, CaseIterable, Identifiable {
-    case cloudflareTunnel = "Cloudflare Tunnel"
     case internalRouting = "Internal Routing"
     case databaseConfig = "Database Config"
     case systemAccess = "System Access"
@@ -1089,14 +1199,13 @@ private enum DeploymentAddOption: String, CaseIterable, Identifiable {
 }
 
 struct AddDeploymentOptionView: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     @Bindable var deployment: Deployment
-    @State private var selectedOption: DeploymentAddOption = .cloudflareTunnel
-    @State private var tunnelName = ""
-    @State private var tunnelPort = ""
-    @State private var gunicornPort = ""
-    @State private var nginxPort = ""
+    @State private var selectedOption: DeploymentAddOption = .internalRouting
+    @State private var routeServiceName = ""
+    @State private var routePort = ""
     @State private var dbName = ""
     @State private var dbPort = ""
     @State private var dbHost = ""
@@ -1123,22 +1232,12 @@ struct AddDeploymentOptionView: View {
                 }
 
                 switch selectedOption {
-                case .cloudflareTunnel:
-                    Section("Cloudflare Tunnel") {
-                        TextField("Tunnel Name", text: $tunnelName, prompt: Text("staging-auth-tunnel"))
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-
-                        TextField("Port", text: $tunnelPort, prompt: Text("8000"))
-                            .keyboardType(.numberPad)
-                    }
-
                 case .internalRouting:
                     Section("Internal Routing") {
-                        TextField("Gunicorn Port", text: $gunicornPort)
-                            .keyboardType(.numberPad)
+                        TextField("Service Name", text: $routeServiceName, prompt: Text("Web app"))
+                            .textInputAutocapitalization(.words)
 
-                        TextField("Nginx Port", text: $nginxPort)
+                        TextField("Port", text: $routePort, prompt: Text("8000"))
                             .keyboardType(.numberPad)
                     }
 
@@ -1235,10 +1334,8 @@ struct AddDeploymentOptionView: View {
 
     private var saveDisabled: Bool {
         switch selectedOption {
-        case .cloudflareTunnel:
-            return trimmedTunnelName.isEmpty || intValue(from: tunnelPort) == nil
         case .internalRouting:
-            return intValue(from: gunicornPort) == nil && intValue(from: nginxPort) == nil
+            return trimmedRouteServiceName.isEmpty || intValue(from: routePort) == nil
         case .databaseConfig:
             return trimmedDbName.isEmpty && intValue(from: dbPort) == nil && dbHost.isEmpty && dbPassword.isEmpty
         case .systemAccess:
@@ -1252,8 +1349,8 @@ struct AddDeploymentOptionView: View {
         }
     }
 
-    private var trimmedTunnelName: String {
-        tunnelName.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var trimmedRouteServiceName: String {
+        routeServiceName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var trimmedDbName: String {
@@ -1274,22 +1371,19 @@ struct AddDeploymentOptionView: View {
 
     private func saveOption() {
         switch selectedOption {
-        case .cloudflareTunnel:
-            guard let port = intValue(from: tunnelPort) else {
+        case .internalRouting:
+            guard let port = intValue(from: routePort) else {
                 return
             }
 
-            let tunnel = Tunnel(deployment: deployment, name: trimmedTunnelName, port: port)
-            deployment.tunnels.append(tunnel)
-
-        case .internalRouting:
-            if let port = intValue(from: gunicornPort) {
-                deployment.gunicornPort = port
-            }
-
-            if let port = intValue(from: nginxPort) {
-                deployment.nginxPort = port
-            }
+            let route = InternalRoute(
+                deployment: deployment,
+                serviceName: trimmedRouteServiceName,
+                port: port,
+                sortOrder: deployment.internalRoutes.count
+            )
+            deployment.internalRoutes.append(route)
+            modelContext.insert(route)
 
         case .databaseConfig:
             if !trimmedDbName.isEmpty {
@@ -1370,10 +1464,10 @@ struct AddDeploymentOptionView: View {
 
 #Preview("ContentView") {
     ContentView()
-        .modelContainer(for: [Client.self, Deployment.self, Tunnel.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
+        .modelContainer(for: [Client.self, Deployment.self, InternalRoute.self, Tunnel.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
 }
 
 #Preview("AddClientView") {
     AddClientView()
-        .modelContainer(for: [Client.self, Deployment.self, Tunnel.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
+        .modelContainer(for: [Client.self, Deployment.self, InternalRoute.self, Tunnel.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
 }

@@ -12,9 +12,9 @@ Conduit tracks the practical details developers reach for while maintaining smal
 - which apps are deployed for each client
 - whether a system is marked online or offline
 - admin URLs and local system ports
-- Gunicorn and Nginx routing ports
+- internal service names and ports
 - database names, ports, and sensitive host/token values
-- server usernames
+- server and admin usernames
 - Cloudflare tunnel names and ports
 - custom text, URL, port, and password fields
 - sensitive passwords stored separately in the iOS Keychain
@@ -30,7 +30,8 @@ Conduit Free includes:
 - searchable client dashboard
 - dark card-based operations UI
 - inline editing for deployment metadata
-- Cloudflare tunnel creation, editing, and deletion
+- flexible internal routing with service-name and port rows
+- Cloudflare tunnel editing and deletion
 - one-tap opening for saved admin URLs
 - custom settings sections with text, URL, port, and password fields
 - local delete flows that also clear saved credentials
@@ -53,6 +54,7 @@ Conduit organizes data into three levels:
 
 - **Clients**: a top-level project, customer, server group, or environment.
 - **Deployments**: an app or system running for a client.
+- **Internal Routes**: service names and ports for local routing.
 - **Cloudflare Tunnels**: tunnel entries attached to a deployment.
 
 Each deployment can store routing, database, system access, tunnel, and admin URL details. The deployment list intentionally stays compact: it shows the app name and online/offline status.

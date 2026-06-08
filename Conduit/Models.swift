@@ -31,12 +31,16 @@ final class Deployment {
     var nginxPort: Int?
     var dbName: String?
     var dbPort: Int?
+    var adminUsername: String?
     @Attribute(originalName: "itsUsername") var username: String?
 
     var client: Client
 
     @Relationship(deleteRule: .cascade, inverse: \Tunnel.deployment)
     var tunnels: [Tunnel] = []
+
+    @Relationship(deleteRule: .cascade, inverse: \InternalRoute.deployment)
+    var internalRoutes: [InternalRoute] = []
 
     @Relationship(deleteRule: .cascade, inverse: \CustomSettingSection.deployment)
     var customSections: [CustomSettingSection] = []
@@ -53,6 +57,7 @@ final class Deployment {
         nginxPort: Int? = nil,
         dbName: String? = nil,
         dbPort: Int? = nil,
+        adminUsername: String? = nil,
         username: String? = nil
     ) {
         self.id = id
@@ -66,7 +71,26 @@ final class Deployment {
         self.nginxPort = nginxPort
         self.dbName = dbName
         self.dbPort = dbPort
+        self.adminUsername = adminUsername
         self.username = username
+    }
+}
+
+@Model
+final class InternalRoute {
+    @Attribute(.unique) var id: UUID
+    var serviceName: String
+    var port: Int
+    var sortOrder: Int
+
+    var deployment: Deployment
+
+    init(id: UUID = UUID(), deployment: Deployment, serviceName: String, port: Int, sortOrder: Int = 0) {
+        self.id = id
+        self.deployment = deployment
+        self.serviceName = serviceName
+        self.port = port
+        self.sortOrder = sortOrder
     }
 }
 
