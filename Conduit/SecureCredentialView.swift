@@ -12,6 +12,7 @@ struct SecureCredentialView: View {
 
     @State private var isUnlocked = false
     @State private var password = ""
+    @State private var isPasswordVisible = false
 
     private let authManager = BiometricAuthManager()
 
@@ -30,13 +31,27 @@ struct SecureCredentialView: View {
                         .foregroundStyle(.white.opacity(0.72))
 
                     HStack(spacing: 10) {
-                        SecureField("Password", text: $password)
-                            .textContentType(.password)
-                            .foregroundStyle(.white)
-                            .tint(.blue)
+                        Group {
+                            if isPasswordVisible {
+                                TextField("Password", text: $password)
+                            } else {
+                                SecureField("Password", text: $password)
+                                    .textContentType(.password)
+                            }
+                        }
+                        .foregroundStyle(.white)
+                        .tint(.blue)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
 
-                        Image(systemName: "eye")
-                            .foregroundStyle(.white.opacity(0.38))
+                        Button {
+                            isPasswordVisible.toggle()
+                        } label: {
+                            Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                                .foregroundStyle(.white.opacity(0.52))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(isPasswordVisible ? "Hide password" : "Show password")
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
@@ -95,6 +110,7 @@ struct SecureCredentialView: View {
             }
 
             password = KeychainManager.read(key: keychainKey) ?? ""
+            isPasswordVisible = false
             isUnlocked = true
         }
     }
@@ -102,6 +118,7 @@ struct SecureCredentialView: View {
     private func savePassword() {
         _ = KeychainManager.save(key: keychainKey, value: password)
         password = ""
+        isPasswordVisible = false
         isUnlocked = false
     }
 }
