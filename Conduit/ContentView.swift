@@ -60,6 +60,31 @@ private func numericTextBinding(_ binding: Binding<String>) -> Binding<String> {
     }
 }
 
+private func dismissKeyboard() {
+    UIApplication.shared.sendAction(
+        #selector(UIResponder.resignFirstResponder),
+        to: nil,
+        from: nil,
+        for: nil
+    )
+}
+
+private extension View {
+    func keyboardDismissControls() -> some View {
+        self
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+
+                    Button("Done") {
+                        dismissKeyboard()
+                    }
+                }
+            }
+    }
+}
+
 private struct ConduitBackground<Content: View>: View {
     @ViewBuilder var content: Content
 
@@ -267,6 +292,7 @@ struct ContentView: View {
                     .padding(.top, 18)
                     .padding(.bottom, 28)
                 }
+                .keyboardDismissControls()
             }
             .navigationTitle("")
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -459,6 +485,7 @@ struct AddClientView: View {
                 TextField("Name", text: $name)
                     .textInputAutocapitalization(.words)
             }
+            .keyboardDismissControls()
             .scrollContentBackground(.hidden)
             .background(ConduitTheme.background)
             .navigationTitle("Add Client")
@@ -496,6 +523,20 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 Section {
+                    Text("I am building Conduit to make server and client work easier to keep track of. If something feels confusing, broken, or genuinely useful, I would really like to hear it.")
+                        .font(.subheadline)
+                        .foregroundStyle(ConduitTheme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Section("Privacy") {
+                    Text("Conduit does not use an account or backend. Project details stay on this device, and saved credentials are stored separately in the iOS Keychain.")
+                        .font(.subheadline)
+                        .foregroundStyle(ConduitTheme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Section {
                     Button {
                         sendFeedback()
                     } label: {
@@ -503,6 +544,7 @@ struct SettingsView: View {
                     }
                 }
             }
+            .keyboardDismissControls()
             .scrollContentBackground(.hidden)
             .background(ConduitTheme.background)
             .navigationTitle("Settings")
@@ -534,7 +576,7 @@ struct SettingsView: View {
 
         var components = URLComponents()
         components.scheme = "mailto"
-        components.path = "feedback@arksoft.xyz"
+        components.path = "siddharthmahajan@arksoft.xyz"
         components.queryItems = [
             URLQueryItem(name: "subject", value: "Conduit Beta Feedback"),
             URLQueryItem(name: "body", value: body)
@@ -608,6 +650,7 @@ struct ClientDetailView: View {
                 .padding(.top, 18)
                 .padding(.bottom, 28)
             }
+            .keyboardDismissControls()
         }
         .navigationTitle("")
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -745,6 +788,7 @@ struct AddDeploymentView: View {
                         .textContentType(.password)
                 }
             }
+            .keyboardDismissControls()
             .scrollContentBackground(.hidden)
             .background(ConduitTheme.background)
             .navigationTitle("Add Deployment")
@@ -969,6 +1013,7 @@ struct DeploymentDetailView: View {
                 .padding(.top, 18)
                 .padding(.bottom, 28)
             }
+            .keyboardDismissControls()
         }
         .navigationTitle("")
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -1419,6 +1464,7 @@ struct AddDeploymentOptionView: View {
                     }
                 }
             }
+            .keyboardDismissControls()
             .scrollContentBackground(.hidden)
             .background(ConduitTheme.background)
             .navigationTitle("Add Option")
