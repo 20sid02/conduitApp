@@ -246,7 +246,7 @@ struct ContentView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         ScreenHeader(
-                            title: "Client",
+                            title: "Keyring",
                             settingsAction: {
                                 showingSettings = true
                             },
@@ -296,7 +296,7 @@ struct ContentView: View {
             }
             .navigationTitle("")
             .toolbarBackground(.hidden, for: .navigationBar)
-            .searchable(text: $searchText, prompt: "Search clients")
+            .freeTierSearchable(text: $searchText)
             .confirmationDialog(
                 "Delete this client?",
                 isPresented: $showingDeleteClientConfirmation,
@@ -318,7 +318,7 @@ struct ContentView: View {
                 AddClientView()
             }
             .sheet(isPresented: $showingSettings) {
-                SettingsView()
+                SettingsView(clients: clients)
             }
             .poweredByArksoftFooter()
         }
@@ -374,6 +374,18 @@ private extension View {
 private enum FreeTierLimits {
     static let maxClients = 4
     static let maxDeploymentsPerClient = 3
+    static let searchEnabled = false
+}
+
+private extension View {
+    @ViewBuilder
+    func freeTierSearchable(text: Binding<String>) -> some View {
+        if FreeTierLimits.searchEnabled {
+            searchable(text: text, prompt: "Search clients")
+        } else {
+            self
+        }
+    }
 }
 
 private extension Deployment {
@@ -523,12 +535,25 @@ struct AddClientView: View {
 }
 
 struct SettingsView: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+
+    let clients: [Client]
+    @State private var showingDeleteAllConfirmation = false
 
     var body: some View {
         NavigationStack {
             List {
+                Section("About Conduit Free") {
+                    Text("Conduit Free is my local-first workspace for tracking clients, deployments, ports, URLs, and credentials without needing an account or backend.")
+                        .font(.subheadline)
+                        .foregroundStyle(ConduitTheme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    LabeledContent("Free Limits", value: "\(FreeTierLimits.maxClients) clients, \(FreeTierLimits.maxDeploymentsPerClient) deployments each")
+                }
+
                 Section {
                     Text("I am building Conduit to make server and client work easier to keep track of. If something feels confusing, broken, or genuinely useful, I would really like to hear it.")
                         .font(.subheadline)
@@ -550,6 +575,19 @@ struct SettingsView: View {
                         Label("Send Feedback", systemImage: "envelope")
                     }
                 }
+
+                Section {
+                    Button(role: .destructive) {
+                        showingDeleteAllConfirmation = true
+                    } label: {
+                        Label("Delete All Local Data", systemImage: "trash")
+                    }
+                    .disabled(clients.isEmpty)
+                } header: {
+                    Text("Testing")
+                } footer: {
+                    Text("Removes all clients, deployments, custom options, and saved Conduit credentials from this device.")
+                }
             }
             .keyboardDismissControls()
             .scrollContentBackground(.hidden)
@@ -563,6 +601,19 @@ struct SettingsView: View {
                         dismiss()
                     }
                 }
+            }
+            .confirmationDialog(
+                "Delete all local Conduit data?",
+                isPresented: $showingDeleteAllConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete All Local Data", role: .destructive) {
+                    deleteAllLocalData()
+                }
+
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This cannot be undone. It removes all local project records and saved credentials from this device.")
             }
         }
     }
@@ -598,6 +649,13 @@ struct SettingsView: View {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"
         return "\(version) (\(build))"
+    }
+
+    private func deleteAllLocalData() {
+        clients.forEach { client in
+            client.deployments.forEach(deleteStoredCredentials)
+            modelContext.delete(client)
+        }
     }
 }
 
