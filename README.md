@@ -96,7 +96,7 @@ That is intentional. I want the free version to be useful for personal workflows
 
 ## Development Notes
 
-On a fresh empty install, Conduit seeds sample local data once so I can test the free workflow immediately.
+On a fresh empty install, Conduit starts with an empty local store. I do not seed sample clients, deployments, or credentials into tester builds.
 
 If the app fails to launch after a SwiftData schema change during development, I delete the app from the simulator or device and run it again. That clears the old local store.
 

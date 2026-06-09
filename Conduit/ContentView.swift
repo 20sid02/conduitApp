@@ -167,7 +167,6 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \Client.createdAt, order: .reverse) private var clients: [Client]
-    @AppStorage("hasSeededFreeSampleData") private var hasSeededFreeSampleData = false
     @State private var showingAddSheet = false
     @State private var searchText = ""
     @State private var clientPendingDeletion: Client?
@@ -247,9 +246,6 @@ struct ContentView: View {
                 AddClientView()
             }
             .poweredByArksoftFooter()
-            .onAppear {
-                seedSampleDataIfNeeded()
-            }
         }
     }
 
@@ -272,96 +268,6 @@ struct ContentView: View {
         client.deployments.forEach(deleteStoredCredentials)
         modelContext.delete(client)
         clientPendingDeletion = nil
-    }
-
-    private func seedSampleDataIfNeeded() {
-        guard !hasSeededFreeSampleData, clients.isEmpty else {
-            return
-        }
-
-        let acme = Client(name: "Acme Studio", createdAt: Date().addingTimeInterval(-86_400 * 3))
-        let northstar = Client(name: "Northstar Dental", createdAt: Date().addingTimeInterval(-86_400))
-
-        modelContext.insert(acme)
-        modelContext.insert(northstar)
-
-        let portal = Deployment(
-            client: acme,
-            appName: "Client Portal",
-            dateDeployed: Date().addingTimeInterval(-7_200),
-            isOnline: true,
-            deploymentURL: "portal.acme.test",
-            systemPort: 8080,
-            dbName: "acme_portal",
-            dbPort: 5432,
-            adminUsername: "admin@acme.test",
-            username: "deploy"
-        )
-        let api = Deployment(
-            client: acme,
-            appName: "Billing API",
-            dateDeployed: Date().addingTimeInterval(-3_600),
-            isOnline: false,
-            deploymentURL: "billing.acme.test",
-            systemPort: 9000,
-            dbName: "billing",
-            dbPort: 5432,
-            adminUsername: "billing-admin",
-            username: "ubuntu"
-        )
-        let booking = Deployment(
-            client: northstar,
-            appName: "Booking Dashboard",
-            dateDeployed: Date().addingTimeInterval(-1_800),
-            isOnline: true,
-            deploymentURL: "northstar.local/dashboard",
-            systemPort: 3000,
-            dbName: "northstar_booking",
-            dbPort: 3306,
-            adminUsername: "ops",
-            username: "deploy"
-        )
-
-        [portal, api].forEach { acme.deployments.append($0) }
-        northstar.deployments.append(booking)
-        [portal, api, booking].forEach(modelContext.insert)
-
-        addRoute("Web app", 8080, to: portal, order: 0)
-        addRoute("Worker", 8787, to: portal, order: 1)
-        addRoute("API", 9000, to: api, order: 0)
-        addRoute("Frontend", 3000, to: booking, order: 0)
-        addRoute("Search", 7700, to: booking, order: 1)
-
-        addCustomSetting(sectionTitle: "Hosting Panel", label: "Panel URL", value: "https://panel.acme.test", type: .url, to: portal)
-        addCustomSetting(sectionTitle: "Release Notes", label: "Branch", value: "main", type: .text, to: portal)
-
-        saveSampleCredentials(for: portal)
-        saveSampleCredentials(for: api)
-        saveSampleCredentials(for: booking)
-
-        hasSeededFreeSampleData = true
-    }
-
-    private func addRoute(_ serviceName: String, _ port: Int, to deployment: Deployment, order: Int) {
-        let route = InternalRoute(deployment: deployment, serviceName: serviceName, port: port, sortOrder: order)
-        deployment.internalRoutes.append(route)
-        modelContext.insert(route)
-    }
-
-    private func addCustomSetting(sectionTitle: String, label: String, value: String, type: CustomSettingFieldType, to deployment: Deployment) {
-        let section = CustomSettingSection(deployment: deployment, title: sectionTitle, sortOrder: deployment.customSections.count)
-        let field = CustomSettingField(section: section, label: label, value: value, type: type, sortOrder: 0)
-        section.fields.append(field)
-        deployment.customSections.append(section)
-        modelContext.insert(section)
-        modelContext.insert(field)
-    }
-
-    private func saveSampleCredentials(for deployment: Deployment) {
-        _ = KeychainManager.save(key: "\(deployment.id)-dbHost", value: "sample-db.internal")
-        _ = KeychainManager.save(key: "\(deployment.id)-dbPassword", value: "sample-db-password")
-        _ = KeychainManager.save(key: "\(deployment.id)-systemAccessPassword", value: "sample-system-password")
-        _ = KeychainManager.save(key: "\(deployment.id)-adminAccessPassword", value: "sample-admin-password")
     }
 }
 
