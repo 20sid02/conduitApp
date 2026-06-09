@@ -393,6 +393,12 @@ private extension Deployment {
         username != nil
             || KeychainManager.read(key: "\(id)-systemAccessPassword") != nil
     }
+
+    var hasAdminAccess: Bool {
+        adminUsername != nil
+            || KeychainManager.read(key: "\(id)-adminAccessPassword") != nil
+            || KeychainManager.read(key: "\(id)-djangoAdminPassword") != nil
+    }
 }
 
 private extension CustomSettingField {
@@ -483,7 +489,8 @@ struct AddClientView: View {
         NavigationStack {
             Form {
                 TextField("Name", text: $name)
-                    .textInputAutocapitalization(.words)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
             }
             .keyboardDismissControls()
             .scrollContentBackground(.hidden)
@@ -716,76 +723,24 @@ struct AddDeploymentView: View {
     @State private var isOnline = true
     @State private var deploymentURL = ""
     @State private var systemPort = ""
-    @State private var routeOneName = ""
-    @State private var routeOnePort = ""
-    @State private var routeTwoName = ""
-    @State private var routeTwoPort = ""
-    @State private var routeThreeName = ""
-    @State private var routeThreePort = ""
-    @State private var dbName = ""
-    @State private var dbPort = ""
-    @State private var dbHost = ""
-    @State private var dbPassword = ""
-    @State private var username = ""
-    @State private var systemAccessPassword = ""
-    @State private var adminUsername = ""
-    @State private var adminAccessPassword = ""
 
     var body: some View {
         NavigationStack {
             Form {
-                Section {
+                Section("Basics") {
                     TextField("App Name", text: $appName)
-                        .textInputAutocapitalization(.words)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
 
                     Toggle("Online System", isOn: $isOnline)
 
-                    TextField("Deployment URL", text: $deploymentURL)
+                    TextField("Deployment URL, IP, or Hosting Location", text: $deploymentURL)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                         .autocorrectionDisabled()
 
                     TextField("System Port (e.g., 8000)", text: numericTextBinding($systemPort))
                         .keyboardType(.numberPad)
-                }
-
-                Section("Internal Routing") {
-                    routeInputRow(serviceName: $routeOneName, port: $routeOnePort)
-                    routeInputRow(serviceName: $routeTwoName, port: $routeTwoPort)
-                    routeInputRow(serviceName: $routeThreeName, port: $routeThreePort)
-                }
-
-                Section("Database Config") {
-                    TextField("Database Name", text: $dbName)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-
-                    TextField("Database Port", text: numericTextBinding($dbPort))
-                        .keyboardType(.numberPad)
-
-                    SecureField("Database Host / Token", text: $dbHost)
-                        .textContentType(.password)
-
-                    SecureField("Database Password", text: $dbPassword)
-                        .textContentType(.password)
-                }
-
-                Section("System Access") {
-                    TextField("Username", text: $username)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-
-                    SecureField("Password", text: $systemAccessPassword)
-                        .textContentType(.password)
-                }
-
-                Section("Admin Access") {
-                    TextField("Admin Username", text: $adminUsername)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-
-                    SecureField("Admin Password", text: $adminAccessPassword)
-                        .textContentType(.password)
                 }
             }
             .keyboardDismissControls()
@@ -813,73 +768,22 @@ struct AddDeploymentView: View {
 
     private func saveDeployment() {
         let trimmedURL = deploymentURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedDbName = dbName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedAdminUsername = adminUsername.trimmingCharacters(in: .whitespacesAndNewlines)
         let deployment = Deployment(
             client: client,
             appName: trimmedAppName,
             dateDeployed: Date(),
             isOnline: isOnline,
             deploymentURL: trimmedURL.isEmpty ? nil : trimmedURL,
-            systemPort: portValue(from: systemPort),
-            dbName: trimmedDbName.isEmpty ? nil : trimmedDbName,
-            dbPort: portValue(from: dbPort),
-            adminUsername: trimmedAdminUsername.isEmpty ? nil : trimmedAdminUsername,
-            username: trimmedUsername.isEmpty ? nil : trimmedUsername
+            systemPort: portValue(from: systemPort)
         )
 
         client.deployments.append(deployment)
         modelContext.insert(deployment)
-        saveRoute(serviceName: routeOneName, port: routeOnePort, deployment: deployment, sortOrder: 0)
-        saveRoute(serviceName: routeTwoName, port: routeTwoPort, deployment: deployment, sortOrder: 1)
-        saveRoute(serviceName: routeThreeName, port: routeThreePort, deployment: deployment, sortOrder: 2)
-        savePassword(dbHost, keySuffix: "dbHost", deployment: deployment)
-        savePassword(dbPassword, keySuffix: "dbPassword", deployment: deployment)
-        savePassword(systemAccessPassword, keySuffix: "systemAccessPassword", deployment: deployment)
-        savePassword(adminAccessPassword, keySuffix: "adminAccessPassword", deployment: deployment)
         dismiss()
     }
 
     private var trimmedAppName: String {
         appName.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func routeInputRow(serviceName: Binding<String>, port: Binding<String>) -> some View {
-        HStack(spacing: 12) {
-            TextField("Service Name", text: serviceName, prompt: Text("Web app"))
-                .textInputAutocapitalization(.words)
-
-            TextField("Port", text: numericTextBinding(port), prompt: Text("8000"))
-                .keyboardType(.numberPad)
-                .multilineTextAlignment(.trailing)
-                .frame(width: 92)
-        }
-    }
-
-    private func saveRoute(serviceName: String, port: String, deployment: Deployment, sortOrder: Int) {
-        let trimmedServiceName = sanitizedText(serviceName)
-
-        guard !trimmedServiceName.isEmpty, let port = portValue(from: port) else {
-            return
-        }
-
-        let route = InternalRoute(
-            deployment: deployment,
-            serviceName: trimmedServiceName,
-            port: port,
-            sortOrder: sortOrder
-        )
-        deployment.internalRoutes.append(route)
-        modelContext.insert(route)
-    }
-
-    private func savePassword(_ password: String, keySuffix: String, deployment: Deployment) {
-        guard !password.isEmpty else {
-            return
-        }
-
-        _ = KeychainManager.save(key: "\(deployment.id)-\(keySuffix)", value: password)
     }
 }
 
@@ -889,6 +793,9 @@ struct DeploymentDetailView: View {
 
     @Bindable var deployment: Deployment
     @State private var showingAddOptionSheet = false
+    @State private var routePendingDeletion: InternalRoute?
+    @State private var showingDeleteDatabaseConfirmation = false
+    @State private var showingDeleteAdminConfirmation = false
 
     var body: some View {
         ConduitBackground {
@@ -906,107 +813,10 @@ struct DeploymentDetailView: View {
                     }
                     .padding(.top, -8)
 
-                    GlassCard {
-                        VStack(spacing: 0) {
-                            EditableRow(title: "App Name") {
-                                darkTextField("Not Set", text: appNameBinding)
-                                    .textInputAutocapitalization(.words)
-                            }
-
-                            DividerLine()
-
-                            Toggle("System Online", isOn: $deployment.isOnline)
-                                .tint(ConduitTheme.online)
-                                .foregroundStyle(ConduitTheme.primary)
-                                .padding(.vertical, 8)
-
-                            DividerLine()
-
-                            EditableRow(title: "Deployment URL") {
-                                darkTextField("None", text: deploymentURLBinding)
-                                    .textInputAutocapitalization(.never)
-                                    .keyboardType(.URL)
-                                    .autocorrectionDisabled()
-                            }
-
-                            if let deploymentURL {
-                                DividerLine()
-
-                                Button {
-                                    openURL(deploymentURL)
-                                } label: {
-                                    Label("Open Deployment URL", systemImage: "safari")
-                                        .font(.subheadline.weight(.semibold))
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.vertical, 8)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(ConduitTheme.accent)
-                            }
-
-                            DividerLine()
-
-                            SecureCredentialView(
-                                deployment: deployment,
-                                title: "Admin Password",
-                                keySuffix: "adminAccessPassword",
-                                legacyKeySuffix: "djangoAdminPassword"
-                            )
-
-                            DividerLine()
-
-                            EditableRow(title: "Admin Username") {
-                                darkTextField("Not Set", text: optionalStringBinding(\.adminUsername))
-                                    .textInputAutocapitalization(.never)
-                                    .autocorrectionDisabled()
-                            }
-
-                            DividerLine()
-
-                            EditableRow(title: "Local System Port") {
-                                darkTextField("Not Set", text: systemPortBinding)
-                                    .keyboardType(.numberPad)
-                            }
-                        }
-                    }
-
+                    systemInfoSection
+                    databaseConfigSection
                     internalRoutingSection
-
-                    editableSection("Database Config") {
-                        EditableRow(title: "Database Name") {
-                            darkTextField("Not Set", text: optionalStringBinding(\.dbName))
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                        }
-
-                        DividerLine()
-
-                        EditableRow(title: "Database Port") {
-                            darkTextField("Not Set", text: optionalIntBinding(\.dbPort))
-                                .keyboardType(.numberPad)
-                        }
-
-                        DividerLine()
-
-                        SecureCredentialView(deployment: deployment, title: "Database Host / Token", keySuffix: "dbHost")
-
-                        DividerLine()
-
-                        SecureCredentialView(deployment: deployment, title: "Database Password", keySuffix: "dbPassword")
-                    }
-
-                    editableSection("System Access") {
-                        EditableRow(title: "Username") {
-                            darkTextField("Not Set", text: optionalStringBinding(\.username))
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                        }
-
-                        DividerLine()
-
-                        SecureCredentialView(deployment: deployment, title: "System Password", keySuffix: "systemAccessPassword")
-                    }
-
+                    adminAccessSection
                     customSettingsSections
                 }
                 .padding(.horizontal, 20)
@@ -1019,6 +829,53 @@ struct DeploymentDetailView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingAddOptionSheet) {
             AddDeploymentOptionView(deployment: deployment)
+        }
+        .confirmationDialog(
+            "Delete this internal route?",
+            isPresented: Binding(
+                get: { routePendingDeletion != nil },
+                set: { if !$0 { routePendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete Internal Route", role: .destructive) {
+                if let route = routePendingDeletion {
+                    deleteInternalRoute(route)
+                }
+                routePendingDeletion = nil
+            }
+
+            Button("Cancel", role: .cancel) {
+                routePendingDeletion = nil
+            }
+        } message: {
+            Text("This removes the saved service name and port from this deployment.")
+        }
+        .confirmationDialog(
+            "Delete database config?",
+            isPresented: $showingDeleteDatabaseConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Database Config", role: .destructive) {
+                deleteDatabaseConfig()
+            }
+
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the database fields and saved database credentials for this deployment.")
+        }
+        .confirmationDialog(
+            "Delete admin access?",
+            isPresented: $showingDeleteAdminConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Admin Access", role: .destructive) {
+                deleteAdminAccess()
+            }
+
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the admin username and saved admin password for this deployment.")
         }
         .poweredByArksoftFooter()
     }
@@ -1074,17 +931,92 @@ struct DeploymentDetailView: View {
         }
     }
 
-    private var internalRoutingSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionTitle(title: "Internal Routing")
+    private var systemInfoSection: some View {
+        editableSection("System Info") {
+            EditableRow(title: "App Name") {
+                darkTextField("Not Set", text: appNameBinding)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            }
 
-            GlassCard {
-                if deployment.internalRoutes.isEmpty {
-                    Text("No internal services configured")
-                        .foregroundStyle(ConduitTheme.muted)
+            DividerLine()
+
+            Toggle("System Online", isOn: $deployment.isOnline)
+                .tint(ConduitTheme.online)
+                .foregroundStyle(ConduitTheme.primary)
+                .padding(.vertical, 8)
+
+            DividerLine()
+
+            EditableRow(title: "Deployment URL / IP / Location") {
+                darkTextField("None", text: deploymentURLBinding)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+            }
+
+            if let deploymentURL {
+                DividerLine()
+
+                Button {
+                    openURL(deploymentURL)
+                } label: {
+                    Label("Open Deployment", systemImage: "safari")
+                        .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 8)
-                } else {
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(ConduitTheme.accent)
+            }
+
+            DividerLine()
+
+            EditableRow(title: "System Port") {
+                darkTextField("Not Set", text: systemPortBinding)
+                    .keyboardType(.numberPad)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var databaseConfigSection: some View {
+        if deployment.hasDatabaseConfig {
+            editableSection("Database Config") {
+                EditableRow(title: "Database Name") {
+                    darkTextField("Not Set", text: optionalStringBinding(\.dbName))
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+
+                DividerLine()
+
+                EditableRow(title: "Database Port") {
+                    darkTextField("Not Set", text: optionalIntBinding(\.dbPort))
+                        .keyboardType(.numberPad)
+                }
+
+                DividerLine()
+
+                SecureCredentialView(deployment: deployment, title: "Database Host / Token", keySuffix: "dbHost")
+
+                DividerLine()
+
+                SecureCredentialView(deployment: deployment, title: "Database Password", keySuffix: "dbPassword")
+            }
+            .onLongPressGesture {
+                showingDeleteDatabaseConfirmation = true
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var internalRoutingSection: some View {
+        if !deployment.internalRoutes.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionTitle(title: "Internal Routing / Ports Used")
+
+                GlassCard {
                     VStack(spacing: 0) {
                         ForEach(Array(sortedInternalRoutes.enumerated()), id: \.element.id) { index, route in
                             @Bindable var editableRoute = route
@@ -1093,7 +1025,8 @@ struct DeploymentDetailView: View {
                                 TextField("Service Name", text: $editableRoute.serviceName)
                                     .fontWeight(.semibold)
                                     .foregroundStyle(ConduitTheme.primary)
-                                    .textInputAutocapitalization(.words)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
 
                                 TextField("Port", text: internalRoutePortBinding(for: editableRoute))
                                     .keyboardType(.numberPad)
@@ -1110,6 +1043,7 @@ struct DeploymentDetailView: View {
                                         .foregroundStyle(ConduitTheme.offline)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel("Delete internal route")
                             }
                             .padding(.vertical, 9)
 
@@ -1123,6 +1057,31 @@ struct DeploymentDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private var adminAccessSection: some View {
+        if deployment.hasAdminAccess {
+            editableSection("Admin Access") {
+                EditableRow(title: "Admin Username") {
+                    darkTextField("Not Set", text: optionalStringBinding(\.adminUsername))
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+
+                DividerLine()
+
+                SecureCredentialView(
+                    deployment: deployment,
+                    title: "Admin Password",
+                    keySuffix: "adminAccessPassword",
+                    legacyKeySuffix: "djangoAdminPassword"
+                )
+            }
+            .onLongPressGesture {
+                showingDeleteAdminConfirmation = true
+            }
+        }
+    }
+
     private var customSettingsSections: some View {
         Group {
             ForEach(sortedCustomSections) { section in
@@ -1130,10 +1089,12 @@ struct DeploymentDetailView: View {
 
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        TextField("Custom Section", text: $editableSection.title)
+                        TextField("Option Category", text: $editableSection.title)
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(ConduitTheme.secondary)
                             .tint(ConduitTheme.accent)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
 
                         Button(role: .destructive) {
                             deleteCustomSection(section)
@@ -1184,10 +1145,12 @@ struct DeploymentDetailView: View {
 
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                TextField("Label", text: $editableField.label)
+                TextField("Option Name", text: $editableField.label)
                     .foregroundStyle(ConduitTheme.primary)
                     .fontWeight(.semibold)
                     .tint(ConduitTheme.accent)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
 
                 Text(field.type.displayName)
                     .font(.caption.weight(.semibold))
@@ -1316,6 +1279,19 @@ struct DeploymentDetailView: View {
         modelContext.delete(route)
     }
 
+    private func deleteDatabaseConfig() {
+        deployment.dbName = nil
+        deployment.dbPort = nil
+        _ = KeychainManager.delete(key: "\(deployment.id)-dbHost")
+        _ = KeychainManager.delete(key: "\(deployment.id)-dbPassword")
+    }
+
+    private func deleteAdminAccess() {
+        deployment.adminUsername = nil
+        _ = KeychainManager.delete(key: "\(deployment.id)-adminAccessPassword")
+        _ = KeychainManager.delete(key: "\(deployment.id)-djangoAdminPassword")
+    }
+
     private func deleteCustomSection(_ section: CustomSettingSection) {
         section.fields
             .filter { $0.type == .password }
@@ -1338,11 +1314,10 @@ struct DeploymentDetailView: View {
 }
 
 private enum DeploymentAddOption: String, CaseIterable, Identifiable {
-    case internalRouting = "Internal Routing"
+    case internalRouting = "Internal Routing / Ports Used"
     case databaseConfig = "Database Config"
-    case systemAccess = "System Access"
     case adminAccess = "Admin Access"
-    case customSetting = "Custom Setting"
+    case customSetting = "Custom Option"
 
     var id: Self { self }
 }
@@ -1359,8 +1334,6 @@ struct AddDeploymentOptionView: View {
     @State private var dbPort = ""
     @State private var dbHost = ""
     @State private var dbPassword = ""
-    @State private var username = ""
-    @State private var systemAccessPassword = ""
     @State private var adminUsername = ""
     @State private var adminAccessPassword = ""
     @State private var customSectionTitle = ""
@@ -1383,11 +1356,12 @@ struct AddDeploymentOptionView: View {
 
                 switch selectedOption {
                 case .internalRouting:
-                    Section("Internal Routing") {
-                        TextField("Service Name", text: $routeServiceName, prompt: Text("Web app"))
-                            .textInputAutocapitalization(.words)
+                    Section("Internal Routing / Ports Used") {
+                        TextField("Service Name", text: $routeServiceName, prompt: Text("Service"))
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
 
-                        TextField("Port", text: numericTextBinding($routePort), prompt: Text("8000"))
+                        TextField("Port", text: numericTextBinding($routePort), prompt: Text("Port"))
                             .keyboardType(.numberPad)
                     }
 
@@ -1407,16 +1381,6 @@ struct AddDeploymentOptionView: View {
                             .textContentType(.password)
                     }
 
-                case .systemAccess:
-                    Section("System Access") {
-                        TextField("Username", text: $username)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-
-                        SecureField("Password", text: $systemAccessPassword)
-                            .textContentType(.password)
-                    }
-
                 case .adminAccess:
                     Section("Admin Access") {
                         TextField("Admin Username", text: $adminUsername)
@@ -1428,12 +1392,14 @@ struct AddDeploymentOptionView: View {
                     }
 
                 case .customSetting:
-                    Section("Custom Setting") {
-                        TextField("Settings Group", text: $customSectionTitle, prompt: Text("Hosting Panel"))
-                            .textInputAutocapitalization(.words)
+                    Section("Custom Option") {
+                        TextField("Option Category", text: $customSectionTitle, prompt: Text("Option Category"))
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
 
-                        TextField("Setting Name", text: $customFieldLabel, prompt: Text("Dashboard URL"))
-                            .textInputAutocapitalization(.words)
+                        TextField("Option Name", text: $customFieldLabel, prompt: Text("Option Name"))
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
 
                         Picker("Setting Type", selection: $customFieldType) {
                             ForEach(CustomSettingFieldType.allCases) { type in
@@ -1443,17 +1409,17 @@ struct AddDeploymentOptionView: View {
 
                         switch customFieldType {
                         case .password:
-                            SecureField("Password", text: $customFieldPassword)
+                            SecureField("Value", text: $customFieldPassword)
                                 .textContentType(.password)
 
                         case .url:
-                            TextField("URL", text: $customFieldValue, prompt: Text("https://panel.example.com"))
+                            TextField("Value", text: $customFieldValue, prompt: Text("https://panel.example.com"))
                                 .keyboardType(.URL)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
 
                         case .port:
-                            TextField("Port", text: numericTextBinding($customFieldValue), prompt: Text("8080"))
+                            TextField("Value", text: numericTextBinding($customFieldValue), prompt: Text("8080"))
                                 .keyboardType(.numberPad)
 
                         case .text:
@@ -1499,10 +1465,8 @@ struct AddDeploymentOptionView: View {
             return trimmedRouteServiceName.isEmpty || portValue(from: routePort) == nil
         case .databaseConfig:
             return trimmedDbName.isEmpty && portValue(from: dbPort) == nil && dbHost.isEmpty && dbPassword.isEmpty
-        case .systemAccess:
-            return trimmedUsername.isEmpty && systemAccessPassword.isEmpty
         case .adminAccess:
-            return adminAccessPassword.isEmpty
+            return trimmedAdminUsername.isEmpty && adminAccessPassword.isEmpty
         case .customSetting:
             return trimmedCustomSectionTitle.isEmpty
                 || trimmedCustomFieldLabel.isEmpty
@@ -1515,9 +1479,9 @@ struct AddDeploymentOptionView: View {
             switch option {
             case .databaseConfig:
                 !deployment.hasDatabaseConfig
-            case .systemAccess:
-                !deployment.hasSystemAccess
-            case .internalRouting, .adminAccess, .customSetting:
+            case .adminAccess:
+                !deployment.hasAdminAccess
+            case .internalRouting, .customSetting:
                 true
             }
         }
@@ -1531,8 +1495,8 @@ struct AddDeploymentOptionView: View {
         dbName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var trimmedUsername: String {
-        username.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var trimmedAdminUsername: String {
+        adminUsername.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var trimmedCustomSectionTitle: String {
@@ -1571,12 +1535,7 @@ struct AddDeploymentOptionView: View {
             savePassword(dbHost, keySuffix: "dbHost")
             savePassword(dbPassword, keySuffix: "dbPassword")
 
-        case .systemAccess:
-            deployment.username = trimmedUsername.isEmpty ? nil : trimmedUsername
-            savePassword(systemAccessPassword, keySuffix: "systemAccessPassword")
-
         case .adminAccess:
-            let trimmedAdminUsername = adminUsername.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmedAdminUsername.isEmpty {
                 deployment.adminUsername = trimmedAdminUsername
             }
