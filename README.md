@@ -99,7 +99,7 @@ That is intentional. I want the free version to be useful for personal workflows
 
 ## Development Notes
 
-On a fresh empty install, Conduit creates one local demo client named "Demo Project (Swipe to Delete)" so testers can understand the workflow immediately. It is created only once, and if a tester deletes it, Conduit will not recreate it on the next launch.
+On a fresh empty install, Conduit creates one local demo client named "Demo Client" so testers can understand the workflow immediately. It is created only once, and if a tester deletes it, Conduit will not recreate it on the next launch.
 
 If the app fails to launch after a SwiftData schema change during development, I delete the app from the simulator or device and run it again. That clears the old local store.
 

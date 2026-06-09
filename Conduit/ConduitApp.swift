@@ -52,7 +52,7 @@ struct ConduitApp: App {
                 return
             }
 
-            let client = Client(name: "Demo Project (Swipe to Delete)")
+            let client = Client(name: "Demo Client")
             context.insert(client)
 
             let deployment = Deployment(
