@@ -21,7 +21,9 @@ struct ConduitApp: App {
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            seedDemoProjectIfNeeded(in: container)
+            return container
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
@@ -32,5 +34,75 @@ struct ConduitApp: App {
             ContentView()
         }
         .modelContainer(sharedModelContainer)
+    }
+
+    private static func seedDemoProjectIfNeeded(in container: ModelContainer) {
+        let seedKey = "hasCreatedDemoProject"
+
+        guard !UserDefaults.standard.bool(forKey: seedKey) else {
+            return
+        }
+
+        let context = ModelContext(container)
+        let descriptor = FetchDescriptor<Client>()
+
+        do {
+            guard try context.fetchCount(descriptor) == 0 else {
+                UserDefaults.standard.set(true, forKey: seedKey)
+                return
+            }
+
+            let client = Client(name: "Demo Project (Swipe to Delete)")
+            context.insert(client)
+
+            let deployment = Deployment(
+                client: client,
+                appName: "Demo Server",
+                dateDeployed: Date(),
+                isOnline: true,
+                deploymentURL: "demo.example.test",
+                systemPort: 8080,
+                dbName: "demo_app",
+                dbPort: 5432,
+                adminUsername: "demo-admin",
+                username: "deploy"
+            )
+            client.deployments.append(deployment)
+            context.insert(deployment)
+
+            let route = InternalRoute(
+                deployment: deployment,
+                serviceName: "Web App",
+                port: 8080
+            )
+            deployment.internalRoutes.append(route)
+            context.insert(route)
+
+            let section = CustomSettingSection(
+                deployment: deployment,
+                title: "Notes",
+                sortOrder: 0
+            )
+            let field = CustomSettingField(
+                section: section,
+                label: "Environment",
+                value: "Beta demo",
+                type: .text,
+                sortOrder: 0
+            )
+            section.fields.append(field)
+            deployment.customSections.append(section)
+            context.insert(section)
+            context.insert(field)
+
+            _ = KeychainManager.save(key: "\(deployment.id)-dbPassword", value: "demo-password")
+            _ = KeychainManager.save(key: "\(deployment.id)-systemAccessPassword", value: "demo-password")
+            _ = KeychainManager.save(key: "\(deployment.id)-adminAccessPassword", value: "demo-password")
+
+            try context.save()
+            UserDefaults.standard.set(true, forKey: seedKey)
+        } catch {
+            print("Could not seed demo project: \(error)")
+        }
     }
 }

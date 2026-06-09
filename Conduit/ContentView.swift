@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 private enum ConduitTheme {
     static let backgroundTop = Color(red: 0.04, green: 0.11, blue: 0.17)
@@ -30,6 +31,35 @@ private enum ConduitTheme {
     }
 }
 
+private let validPortRange = 1...65_535
+
+private func sanitizedNumericText(_ text: String) -> String {
+    String(text.unicodeScalars.filter { scalar in
+        (48...57).contains(Int(scalar.value))
+    })
+}
+
+private func sanitizedText(_ text: String) -> String {
+    text.trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+private func portValue(from text: String) -> Int? {
+    let numericText = sanitizedNumericText(text)
+    guard let port = Int(numericText), validPortRange.contains(port) else {
+        return nil
+    }
+
+    return port
+}
+
+private func numericTextBinding(_ binding: Binding<String>) -> Binding<String> {
+    Binding {
+        sanitizedNumericText(binding.wrappedValue)
+    } set: { newValue in
+        binding.wrappedValue = sanitizedNumericText(newValue)
+    }
+}
+
 private struct ConduitBackground<Content: View>: View {
     @ViewBuilder var content: Content
 
@@ -46,6 +76,7 @@ private struct ConduitBackground<Content: View>: View {
 
 private struct ScreenHeader: View {
     let title: String
+    var settingsAction: (() -> Void)?
     var action: (() -> Void)?
 
     var body: some View {
@@ -55,6 +86,17 @@ private struct ScreenHeader: View {
                 .foregroundStyle(ConduitTheme.primary)
 
             Spacer()
+
+            if let settingsAction {
+                Button(action: settingsAction) {
+                    Image(systemName: "gearshape")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(ConduitTheme.secondary)
+                        .frame(width: 44, height: 44)
+                        .background(.white.opacity(0.08), in: Circle())
+                }
+                .accessibilityLabel("Settings")
+            }
 
             if let action {
                 Button(action: action) {
@@ -171,6 +213,7 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var clientPendingDeletion: Client?
     @State private var showingDeleteClientConfirmation = false
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
@@ -179,6 +222,9 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         ScreenHeader(
                             title: "Client",
+                            settingsAction: {
+                                showingSettings = true
+                            },
                             action: clients.count < FreeTierLimits.maxClients ? {
                                 showingAddSheet = true
                             } : nil
@@ -244,6 +290,9 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingAddSheet) {
                 AddClientView()
+            }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
             }
             .poweredByArksoftFooter()
         }
@@ -439,6 +488,70 @@ struct AddClientView: View {
     }
 }
 
+struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Button {
+                        sendFeedback()
+                    } label: {
+                        Label("Send Feedback", systemImage: "envelope")
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(ConduitTheme.background)
+            .navigationTitle("Settings")
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .tint(ConduitTheme.accent)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func sendFeedback() {
+        let device = UIDevice.current
+        let body = """
+        Conduit Beta Feedback
+
+        What happened?
+
+
+        ---
+        iOS: \(device.systemName) \(device.systemVersion)
+        Device: \(device.model)
+        App Version: \(appVersion)
+        """
+
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = "feedback@arksoft.xyz"
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: "Conduit Beta Feedback"),
+            URLQueryItem(name: "body", value: body)
+        ]
+
+        if let url = components.url {
+            openURL(url)
+        }
+    }
+
+    private var appVersion: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "Unknown"
+        return "\(version) (\(build))"
+    }
+}
+
 struct ClientDetailView: View {
     @Environment(\.modelContext) private var modelContext
 
@@ -589,7 +702,7 @@ struct AddDeploymentView: View {
                         .keyboardType(.URL)
                         .autocorrectionDisabled()
 
-                    TextField("System Port (e.g., 8000)", text: $systemPort)
+                    TextField("System Port (e.g., 8000)", text: numericTextBinding($systemPort))
                         .keyboardType(.numberPad)
                 }
 
@@ -604,7 +717,7 @@ struct AddDeploymentView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
 
-                    TextField("Database Port", text: $dbPort)
+                    TextField("Database Port", text: numericTextBinding($dbPort))
                         .keyboardType(.numberPad)
 
                     SecureField("Database Host / Token", text: $dbHost)
@@ -665,9 +778,9 @@ struct AddDeploymentView: View {
             dateDeployed: Date(),
             isOnline: isOnline,
             deploymentURL: trimmedURL.isEmpty ? nil : trimmedURL,
-            systemPort: intValue(from: systemPort),
+            systemPort: portValue(from: systemPort),
             dbName: trimmedDbName.isEmpty ? nil : trimmedDbName,
-            dbPort: intValue(from: dbPort),
+            dbPort: portValue(from: dbPort),
             adminUsername: trimmedAdminUsername.isEmpty ? nil : trimmedAdminUsername,
             username: trimmedUsername.isEmpty ? nil : trimmedUsername
         )
@@ -693,21 +806,17 @@ struct AddDeploymentView: View {
             TextField("Service Name", text: serviceName, prompt: Text("Web app"))
                 .textInputAutocapitalization(.words)
 
-            TextField("Port", text: port, prompt: Text("8000"))
+            TextField("Port", text: numericTextBinding(port), prompt: Text("8000"))
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.trailing)
                 .frame(width: 92)
         }
     }
 
-    private func intValue(from text: String) -> Int? {
-        Int(text.trimmingCharacters(in: .whitespacesAndNewlines))
-    }
-
     private func saveRoute(serviceName: String, port: String, deployment: Deployment, sortOrder: Int) {
-        let trimmedServiceName = serviceName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedServiceName = sanitizedText(serviceName)
 
-        guard !trimmedServiceName.isEmpty, let port = intValue(from: port) else {
+        guard !trimmedServiceName.isEmpty, let port = portValue(from: port) else {
             return
         }
 
@@ -741,9 +850,9 @@ struct DeploymentDetailView: View {
         ConduitBackground {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    ScreenHeader(title: deploymentDisplayName) {
+                    ScreenHeader(title: deploymentDisplayName, action: {
                         showingAddOptionSheet = true
-                    }
+                    })
 
                     HStack(spacing: 8) {
                         StatusDot(isOnline: deployment.isOnline)
@@ -1082,7 +1191,7 @@ struct DeploymentDetailView: View {
                 }
 
             case .port:
-                customValueField("Port", text: customFieldValueBinding(for: field))
+                customValueField("Port", text: numericTextBinding(customFieldValueBinding(for: field)))
                     .keyboardType(.numberPad)
 
             case .text:
@@ -1133,8 +1242,8 @@ struct DeploymentDetailView: View {
         Binding {
             deployment[keyPath: keyPath].map(String.init) ?? ""
         } set: { newValue in
-            let trimmedValue = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            deployment[keyPath: keyPath] = trimmedValue.isEmpty ? nil : Int(trimmedValue)
+            let numericText = sanitizedNumericText(newValue)
+            deployment[keyPath: keyPath] = numericText.isEmpty ? nil : portValue(from: numericText)
         }
     }
 
@@ -1151,9 +1260,7 @@ struct DeploymentDetailView: View {
         Binding {
             String(route.port)
         } set: { newValue in
-            let trimmedValue = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            if let port = Int(trimmedValue) {
+            if let port = portValue(from: newValue) {
                 route.port = port
             }
         }
@@ -1235,7 +1342,7 @@ struct AddDeploymentOptionView: View {
                         TextField("Service Name", text: $routeServiceName, prompt: Text("Web app"))
                             .textInputAutocapitalization(.words)
 
-                        TextField("Port", text: $routePort, prompt: Text("8000"))
+                        TextField("Port", text: numericTextBinding($routePort), prompt: Text("8000"))
                             .keyboardType(.numberPad)
                     }
 
@@ -1245,7 +1352,7 @@ struct AddDeploymentOptionView: View {
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
 
-                        TextField("Database Port", text: $dbPort)
+                        TextField("Database Port", text: numericTextBinding($dbPort))
                             .keyboardType(.numberPad)
 
                         SecureField("Database Host / Token", text: $dbHost)
@@ -1301,7 +1408,7 @@ struct AddDeploymentOptionView: View {
                                 .autocorrectionDisabled()
 
                         case .port:
-                            TextField("Port", text: $customFieldValue, prompt: Text("8080"))
+                            TextField("Port", text: numericTextBinding($customFieldValue), prompt: Text("8080"))
                                 .keyboardType(.numberPad)
 
                         case .text:
@@ -1343,9 +1450,9 @@ struct AddDeploymentOptionView: View {
     private var saveDisabled: Bool {
         switch selectedOption {
         case .internalRouting:
-            return trimmedRouteServiceName.isEmpty || intValue(from: routePort) == nil
+            return trimmedRouteServiceName.isEmpty || portValue(from: routePort) == nil
         case .databaseConfig:
-            return trimmedDbName.isEmpty && intValue(from: dbPort) == nil && dbHost.isEmpty && dbPassword.isEmpty
+            return trimmedDbName.isEmpty && portValue(from: dbPort) == nil && dbHost.isEmpty && dbPassword.isEmpty
         case .systemAccess:
             return trimmedUsername.isEmpty && systemAccessPassword.isEmpty
         case .adminAccess:
@@ -1393,7 +1500,7 @@ struct AddDeploymentOptionView: View {
     private func saveOption() {
         switch selectedOption {
         case .internalRouting:
-            guard let port = intValue(from: routePort) else {
+            guard let port = portValue(from: routePort) else {
                 return
             }
 
@@ -1411,7 +1518,7 @@ struct AddDeploymentOptionView: View {
                 deployment.dbName = trimmedDbName
             }
 
-            if let port = intValue(from: dbPort) {
+            if let port = portValue(from: dbPort) {
                 deployment.dbPort = port
             }
 
@@ -1435,10 +1542,6 @@ struct AddDeploymentOptionView: View {
         }
 
         dismiss()
-    }
-
-    private func intValue(from text: String) -> Int? {
-        Int(text.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     private func normalizeSelectedOption() {

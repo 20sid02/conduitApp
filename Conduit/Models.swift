@@ -1,6 +1,33 @@
 import Foundation
 import SwiftData
 
+private let conduitValidPortRange = 1...65_535
+
+private func conduitTrimmed(_ value: String) -> String {
+    value.trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+private func conduitTrimmedOptional(_ value: String?) -> String? {
+    guard let value else {
+        return nil
+    }
+
+    let trimmedValue = conduitTrimmed(value)
+    return trimmedValue.isEmpty ? nil : trimmedValue
+}
+
+private func conduitOptionalPort(_ port: Int?) -> Int? {
+    guard let port, conduitValidPortRange.contains(port) else {
+        return nil
+    }
+
+    return port
+}
+
+private func conduitRequiredPort(_ port: Int) -> Int {
+    conduitValidPortRange.contains(port) ? port : 1
+}
+
 @Model
 final class Client {
     @Attribute(.unique) var id: UUID
@@ -13,9 +40,9 @@ final class Client {
 
     init(id: UUID = UUID(), name: String, createdAt: Date = Date(), keychainVaultId: String = UUID().uuidString) {
         self.id = id
-        self.name = name
+        self.name = conduitTrimmed(name)
         self.createdAt = createdAt
-        self.keychainVaultId = keychainVaultId
+        self.keychainVaultId = conduitTrimmed(keychainVaultId)
     }
 }
 
@@ -55,15 +82,15 @@ final class Deployment {
     ) {
         self.id = id
         self.client = client
-        self.appName = appName
+        self.appName = conduitTrimmedOptional(appName)
         self.dateDeployed = dateDeployed
         self.isOnline = isOnline
-        self.deploymentURL = deploymentURL
-        self.systemPort = systemPort
-        self.dbName = dbName
-        self.dbPort = dbPort
-        self.adminUsername = adminUsername
-        self.username = username
+        self.deploymentURL = conduitTrimmedOptional(deploymentURL)
+        self.systemPort = conduitOptionalPort(systemPort)
+        self.dbName = conduitTrimmedOptional(dbName)
+        self.dbPort = conduitOptionalPort(dbPort)
+        self.adminUsername = conduitTrimmedOptional(adminUsername)
+        self.username = conduitTrimmedOptional(username)
     }
 }
 
@@ -79,8 +106,8 @@ final class InternalRoute {
     init(id: UUID = UUID(), deployment: Deployment, serviceName: String, port: Int, sortOrder: Int = 0) {
         self.id = id
         self.deployment = deployment
-        self.serviceName = serviceName
-        self.port = port
+        self.serviceName = conduitTrimmed(serviceName)
+        self.port = conduitRequiredPort(port)
         self.sortOrder = sortOrder
     }
 }
@@ -99,7 +126,7 @@ final class CustomSettingSection {
     init(id: UUID = UUID(), deployment: Deployment, title: String, sortOrder: Int = 0) {
         self.id = id
         self.deployment = deployment
-        self.title = title
+        self.title = conduitTrimmed(title)
         self.sortOrder = sortOrder
     }
 }
@@ -124,8 +151,8 @@ final class CustomSettingField {
     ) {
         self.id = id
         self.section = section
-        self.label = label
-        self.value = value
+        self.label = conduitTrimmed(label)
+        self.value = conduitTrimmedOptional(value)
         self.typeRawValue = type.rawValue
         self.sortOrder = sortOrder
     }
