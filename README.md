@@ -1,106 +1,168 @@
-# Conduit Free
+<p align="center">
+  <img src="assets/logo-new.png" width="128" alt="Conduit app icon">
+</p>
 
-Conduit is an offline iOS app I am building for freelancers, small agencies, and solo developers who need a clear map of client deployments without keeping everything scattered across notes, spreadsheets, chats, and memory.
+<h1 align="center">Conduit</h1>
 
-For the free version, I am keeping the focus simple: local infrastructure details and sensitive credentials should be organized on the device, easy to reach, and not mixed into a general notes app.
+<p align="center">
+  A private iOS workspace for keeping client deployments, ports, access details, and credentials organized on-device.
+</p>
 
-## What I Want It To Help With
+<p align="center">
+  <img alt="iOS" src="https://img.shields.io/badge/iOS-26.5+-0A84FF?style=for-the-badge&logo=apple&logoColor=white">
+  <img alt="Offline First" src="https://img.shields.io/badge/offline--first-local%20data-22C55E?style=for-the-badge">
+  <img alt="Keychain Protected" src="https://img.shields.io/badge/credentials-Keychain%20protected-111827?style=for-the-badge">
+  <img alt="Beta" src="https://img.shields.io/badge/status-closed%20beta-F59E0B?style=for-the-badge">
+</p>
 
-I am using Conduit to track the practical details I usually need when maintaining small client systems:
+<p align="center">
+  <a href="https://arksoft.xyz">
+    <img alt="Powered by ArkSoft" src="https://img.shields.io/badge/Powered%20by-ArkSoft-0A84FF?style=flat-square">
+  </a>
+</p>
 
-- which clients or projects exist
-- which apps are deployed for each client
-- whether a system is marked online or offline
-- deployment URLs and local system ports
-- internal service names and ports
-- database names, ports, and sensitive host/token values
-- server and admin usernames
-- custom text, URL, port, and password fields
-- sensitive passwords stored separately in the iOS Keychain
+---
 
-I am not trying to make Conduit an SSH client, uptime monitor, provider dashboard, or CI/CD tracker in the free version. I want it to sit between those tools as a personal offline infrastructure map.
+## What Conduit Is
 
-## Free Version Scope
+Conduit is built for people who manage small client systems and need a clear, private place to remember what runs where.
 
-For Conduit Free, I am including:
+Instead of spreading deployment details across notes, chats, spreadsheets, and memory, Conduit keeps the practical pieces together:
 
-- local-only SwiftData storage
-- manual client and deployment entry
-- one-time demo project on first launch
-- searchable client dashboard
-- dark card-based operations UI
-- inline editing for deployment metadata
-- port input sanitization and validation
-- flexible internal routing with service-name and port rows
-- one-tap opening for saved deployment URLs
-- custom settings sections with text, URL, port, and password fields
-- local delete flows that also clear saved credentials
-- in-app beta feedback email
-- Face ID, Touch ID, or passcode-gated credential access
+| Area | What it helps track |
+| --- | --- |
+| **Clients** | Projects, companies, or server groups |
+| **Deployments** | Apps or systems attached to each client |
+| **System Info** | Online/offline status, deployment URL, IP, location, and system port |
+| **Database Config** | Database name, port, sensitive host/token value, and password |
+| **Internal Routing** | Service names and ports used inside the deployment |
+| **Admin Access** | Admin username and protected password |
+| **Custom Options** | Extra text, URL, port, or password fields for stack-specific notes |
 
-The free version currently has these limits:
+---
 
-- up to 4 clients
-- up to 3 deployments per client
-- one database config per deployment
-- one system access config per deployment
+## Highlights
 
-I am intentionally leaving these out of the free version for now:
+<table>
+  <tr>
+    <td width="50%">
+      <h3>Private by Default</h3>
+      <p>No account, backend, or sync requirement. Deployment records stay on the device.</p>
+    </td>
+    <td width="50%">
+      <h3>Credential Aware</h3>
+      <p>Sensitive values are stored separately in the iOS Keychain and unlocked with Face ID, Touch ID, or passcode.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <h3>Built for Real Deployments</h3>
+      <p>Track URLs, ports, internal services, database details, and admin access without assuming one specific tech stack.</p>
+    </td>
+    <td width="50%">
+      <h3>Flexible Custom Fields</h3>
+      <p>Add custom categories with text, URL, port, or password fields when a deployment needs something unique.</p>
+    </td>
+  </tr>
+</table>
+
+---
+
+## Preview
+
+<p align="center">
+  <img src="assets/appImages/Simulator%20Screenshot%20-%20Clone%202%20of%20iPhone%2017%20-%202026-06-09%20at%2023.54.30.png" width="220" alt="Conduit keyring dashboard">
+  <img src="assets/appImages/Simulator%20Screenshot%20-%20Clone%202%20of%20iPhone%2017%20-%202026-06-09%20at%2023.54.50.png" width="220" alt="Conduit client deployment list">
+  <img src="assets/appImages/Simulator%20Screenshot%20-%20Clone%202%20of%20iPhone%2017%20-%202026-06-09%20at%2023.54.54.png" width="220" alt="Conduit deployment detail screen">
+</p>
+
+<p align="center">
+  <img src="assets/appImages/Simulator%20Screenshot%20-%20Clone%202%20of%20iPhone%2017%20-%202026-06-09%20at%2023.55.17.png" width="220" alt="Conduit custom option form">
+</p>
+
+---
+
+## Conduit Free
+
+Conduit Free is designed to be useful without a paid upgrade.
+
+<details open>
+<summary><strong>Included in the free beta</strong></summary>
+
+| Feature | Included |
+| --- | :---: |
+| Local client and deployment tracking | Yes |
+| Offline-first storage | Yes |
+| Keychain-backed credentials | Yes |
+| Biometric/passcode unlock | Yes |
+| Internal routing and port tracking | Yes |
+| Database and admin access sections | Yes |
+| Custom text, URL, port, and password fields | Yes |
+| In-app feedback email | Yes |
+| Delete all local data option | Yes |
+
+</details>
+
+<details>
+<summary><strong>Current free limits</strong></summary>
+
+| Limit | Value |
+| --- | --- |
+| Clients | 4 |
+| Deployments per client | 3 |
+| Database config per deployment | 1 |
+| Admin access section per deployment | 1 |
+| Internal routing entries | Multiple |
+| Custom options | Multiple |
+
+</details>
+
+<details>
+<summary><strong>Not included in Conduit Free</strong></summary>
+
+These are not part of the free beta:
 
 - iCloud sync
-- active uptime monitoring
-- provider/API imports
-- provider-specific infrastructure management
-- reusable custom field templates
-- PDF or markdown handover exports
-- subscription-only automation features
+- uptime monitoring
+- Cloudflare or hosting-provider imports
+- PDF or markdown infrastructure reports
+- team sharing
+- automated deployment checks
 
-Those are future Pro ideas. My goal is for the free branch to stay useful on its own without depending on any paid feature.
+</details>
 
-## App Structure
+---
 
-I am organizing Conduit around three levels:
+## Security Model
 
-- **Clients**: a top-level project, customer, server group, or environment.
-- **Deployments**: an app or system running for a client.
-- **Internal Routes**: service names and ports for local routing.
+Conduit does not store passwords in the main app database.
 
-Each deployment can store routing, database, system access, admin access, custom settings, and deployment URL details. I am keeping the deployment list compact on purpose: it shows the app name and online/offline status first, then the deeper details live inside the deployment screen.
+General deployment records are stored locally with SwiftData. Passwords and sensitive token-like values are stored separately in the iOS Keychain using device-bound protection.
 
-Custom settings are there for stack-specific details that do not fit the built-in sections. A custom field can be plain text, a clickable URL, a port, or a Keychain-backed password.
+When a client or deployment is deleted, Conduit also removes its related saved credentials from the device.
 
-## Credential Safety
+---
 
-I am not storing passwords in SwiftData.
+## Beta Status
 
-Conduit stores passwords and sensitive host/token values in the iOS Keychain with device-only accessibility. Credential rows stay beside their related settings, and they require Face ID, Touch ID, or device passcode authentication before editing.
+Conduit is currently prepared for closed beta testing.
 
-Current credential types:
+The beta focus is simple:
 
-- database host/token
-- database password
-- system access password
-- admin access password
-- custom password fields
+- confirm the app is easy to understand on first launch
+- test adding and editing real deployment information
+- verify credential unlock and save flows
+- check that deletion and local reset flows behave clearly
+- collect feedback before adding larger paid features
 
-When a deployment or client is deleted, Conduit also deletes the related saved credentials from the Keychain.
+---
 
-## Interface Direction
+## From ArkSoft
 
-I am aiming for a dark, card-based operations UI with bold headings, blue action accents, green/red system status dots, and lightweight ArkSoft attribution. The app icon uses the branded background logo, while app screens keep branding minimal with a bottom "Powered by ArkSoft" link.
+Conduit is made by ArkSoft as a focused utility for developers, freelancers, and small teams who want a calmer way to keep deployment details close at hand.
 
-The design direction is documented in [DESIGN.md](DESIGN.md), and I want future free and Pro screens to stay consistent with it.
-
-## Offline First
-
-Conduit Free has no backend, no account system, and no remote sync. Server metadata stays in the local SwiftData store, and credentials stay in the local iOS Keychain.
-
-That is intentional. I want the free version to be useful for personal workflows, local-first client tracking, and quick reference while working on deployments.
-
-## Development Notes
-
-On a fresh empty install, Conduit creates one local demo client named "Demo Client" so testers can understand the workflow immediately. It is created only once, and if a tester deletes it, Conduit will not recreate it on the next launch.
-
-If the app fails to launch after a SwiftData schema change during development, I delete the app from the simulator or device and run it again. That clears the old local store.
-
-The app includes an `NSFaceIDUsageDescription` entry for biometric credential unlock prompts.
+<p>
+  <a href="https://arksoft.xyz">
+    <img alt="Visit ArkSoft" src="https://img.shields.io/badge/Visit-ArkSoft-0A84FF?style=for-the-badge">
+  </a>
+</p>
