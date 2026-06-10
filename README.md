@@ -159,7 +159,11 @@ The beta focus is simple:
 
 ## From ArkSoft
 
+<<<<<<< HEAD
 Conduit is made by ArkSoft as a focused utility for developers, freelancers, and small teams who want a calmer way to keep deployment details close at hand.
+=======
+I am aiming for a dark, card-based operations UI with bold headings, blue action accents, and green/red system status dots. The app screens keep branding minimal so the deployment information stays first.
+>>>>>>> origin/conduit-free
 
 <p>
   <a href="https://arksoft.xyz">
