@@ -15,12 +15,6 @@
   <img alt="Beta" src="https://img.shields.io/badge/status-closed%20beta-F59E0B?style=for-the-badge">
 </p>
 
-<p align="center">
-  <a href="https://arksoft.xyz">
-    <img alt="Powered by ArkSoft" src="https://img.shields.io/badge/Powered%20by-ArkSoft-0A84FF?style=flat-square">
-  </a>
-</p>
-
 ---
 
 ## What Conduit Is
@@ -157,16 +151,8 @@ The beta focus is simple:
 
 ---
 
-## From ArkSoft
+## Built Independently
 
-<<<<<<< HEAD
-Conduit is made by ArkSoft as a focused utility for developers, freelancers, and small teams who want a calmer way to keep deployment details close at hand.
-=======
-I am aiming for a dark, card-based operations UI with bold headings, blue action accents, and green/red system status dots. The app screens keep branding minimal so the deployment information stays first.
->>>>>>> origin/conduit-free
+Conduit is currently built and maintained as an independent solo-developer project.
 
-<p>
-  <a href="https://arksoft.xyz">
-    <img alt="Visit ArkSoft" src="https://img.shields.io/badge/Visit-ArkSoft-0A84FF?style=for-the-badge">
-  </a>
-</p>
+The interface is intentionally dark, focused, and practical: bold headings, blue action accents, green/red status dots, and compact cards that keep deployment information first.
