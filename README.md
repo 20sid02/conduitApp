@@ -87,7 +87,7 @@ When a deployment or client is deleted, Conduit also deletes the related saved c
 
 ## Interface Direction
 
-I am aiming for a dark, card-based operations UI with bold headings, blue action accents, green/red system status dots, and lightweight ArkSoft attribution. The app icon uses the branded background logo, while app screens keep branding minimal with a bottom "Powered by ArkSoft" link.
+I am aiming for a dark, card-based operations UI with bold headings, blue action accents, and green/red system status dots. The app screens keep branding minimal so the deployment information stays first.
 
 The design direction is documented in [DESIGN.md](DESIGN.md), and I want future free and Pro screens to stay consistent with it.
 

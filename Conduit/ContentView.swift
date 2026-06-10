@@ -320,7 +320,6 @@ struct ContentView: View {
             .sheet(isPresented: $showingSettings) {
                 SettingsView(clients: clients)
             }
-            .poweredByArksoftFooter()
         }
     }
 
@@ -343,31 +342,6 @@ struct ContentView: View {
         client.deployments.forEach(deleteStoredCredentials)
         modelContext.delete(client)
         clientPendingDeletion = nil
-    }
-}
-
-private struct PoweredByArksoftFooter: View {
-    var body: some View {
-        HStack(spacing: 4) {
-            Text("Powered by")
-                .foregroundStyle(ConduitTheme.muted)
-
-            Link("ArkSoft", destination: URL(string: "https://arksoft.xyz")!)
-                .foregroundStyle(ConduitTheme.accent)
-        }
-        .font(.caption.weight(.semibold))
-        .frame(maxWidth: .infinity)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
-        .background(ConduitTheme.backgroundBottom.opacity(0.96))
-    }
-}
-
-private extension View {
-    func poweredByArksoftFooter() -> some View {
-        safeAreaInset(edge: .bottom, spacing: 0) {
-            PoweredByArksoftFooter()
-        }
     }
 }
 
@@ -634,7 +608,7 @@ struct SettingsView: View {
 
         var components = URLComponents()
         components.scheme = "mailto"
-        components.path = "siddharthmahajan@arksoft.xyz"
+        components.path = ""
         components.queryItems = [
             URLQueryItem(name: "subject", value: "Conduit Beta Feedback"),
             URLQueryItem(name: "body", value: body)
@@ -739,7 +713,6 @@ struct ClientDetailView: View {
         .sheet(isPresented: $showingAddDeploymentSheet) {
             AddDeploymentView(client: client)
         }
-        .poweredByArksoftFooter()
     }
 
     private func deleteDeployment(_ deployment: Deployment) {
@@ -935,7 +908,6 @@ struct DeploymentDetailView: View {
         } message: {
             Text("This removes the admin username and saved admin password for this deployment.")
         }
-        .poweredByArksoftFooter()
     }
 
     private var deploymentDisplayName: String {
