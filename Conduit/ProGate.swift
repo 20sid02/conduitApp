@@ -24,7 +24,7 @@ struct ProGateCard: View {
                         .font(.title2.weight(.semibold))
                         .foregroundStyle(ConduitTheme.accent)
 
-                    Text("Conduit Pro")
+                    Text("Conduit Plus")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(ConduitTheme.accent)
                         .padding(.horizontal, 8)

@@ -94,12 +94,12 @@ struct ContentView: View {
         guard !query.isEmpty else { return clients }
         return clients.filter { client in
             client.name.localizedCaseInsensitiveContains(query)
-                || client.deployments.contains { $0.displayName.localizedCaseInsensitiveContains(query) }
+                || (client.deployments ?? []).contains { $0.displayName.localizedCaseInsensitiveContains(query) }
         }
     }
 
     private func deleteClient(_ client: Client) {
-        client.deployments.forEach(deleteStoredCredentials)
+        (client.deployments ?? []).forEach(deleteStoredCredentials)
         modelContext.delete(client)
         clientPendingDeletion = nil
     }
@@ -123,7 +123,7 @@ private struct ClientCard: View {
     let client: Client
 
     private var hasOnlineDeployment: Bool {
-        client.deployments.contains { $0.isOnline }
+        (client.deployments ?? []).contains { $0.isOnline }
     }
 
     var body: some View {
@@ -135,9 +135,9 @@ private struct ClientCard: View {
                         .foregroundStyle(ConduitTheme.primary)
 
                     HStack(spacing: 8) {
-                        Text(client.deployments.isEmpty
+                        Text((client.deployments ?? []).isEmpty
                              ? "No deployments"
-                             : "\(client.deployments.count) deployment\(client.deployments.count == 1 ? "" : "s")")
+                             : "\(client.deployments!.count) deployment\(client.deployments!.count == 1 ? "" : "s")")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(ConduitTheme.secondary)
                             .padding(.horizontal, 10)

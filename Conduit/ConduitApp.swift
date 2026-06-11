@@ -10,42 +10,124 @@ import SwiftData
 
 @main
 struct ConduitApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Client.self,
-            Deployment.self,
-            InternalRoute.self,
-            CustomSettingSection.self,
-            CustomSettingField.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+    @Environment(\.scenePhase) private var scenePhase
 
-        do {
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-            seedDemoProjectIfNeeded(in: container)
-            return container
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+    var sharedModelContainer: ModelContainer = {
+        // NOTE: CloudKit container initialization is intentionally omitted here.
+        // Attempting ModelContainer with cloudKitDatabase: .private(...) applies
+        // CloudKit schema validation process-wide — even to subsequent local and
+        // in-memory containers — causing loadIssueModelContainer on every attempt
+        // until the process exits. CloudKit will be enabled once Xcode capabilities
+        // (iCloud + Background Modes) are confirmed set up.
+
+        // Each attempt creates a fresh Schema to avoid any shared-state contamination.
+
+        func makeSchema() -> Schema {
+            Schema([
+                Client.self,
+                Deployment.self,
+                InternalRoute.self,
+                CustomSettingSection.self,
+                CustomSettingField.self,
+            ])
         }
+
+        // ── Attempt 1: CloudKit-backed persistent store ───────────────────────
+        // .automatic → uses NSPersistentCloudKitContainer when the iCloud entitlement
+        // is present, falling back to a plain local store when iCloud is unavailable.
+        // This means ALL data (free and Pro tier) is silently backed by the user's
+        // personal iCloud container, so upgrading to Pro is seamless — no migration.
+        let s1 = makeSchema()
+        if let container = try? ModelContainer(
+            for: s1,
+            configurations: [ModelConfiguration(schema: s1,
+                                                isStoredInMemoryOnly: false,
+                                                cloudKitDatabase: .automatic)]
+        ) {
+            seedDemoProjectIfNeeded(in: container)
+            print("[Conduit] Container ready (CloudKit: automatic).")
+            return container
+        }
+        print("[Conduit] Container failed — running store recovery.")
+
+        // ── Recovery: delete every SQLite / store file in Application Support ──
+        let dir = URL.applicationSupportDirectory
+        if let files = try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: nil
+        ) {
+            for url in files where isStoreFile(url) {
+                try? FileManager.default.removeItem(at: url)
+                print("[Conduit] Removed: \(url.lastPathComponent)")
+            }
+        }
+
+        // ── Attempt 2: fresh store after recovery ─────────────────────────────
+        let s2 = makeSchema()
+        if let container = try? ModelContainer(
+            for: s2,
+            configurations: [ModelConfiguration(schema: s2,
+                                                isStoredInMemoryOnly: false,
+                                                cloudKitDatabase: .automatic)]
+        ) {
+            seedDemoProjectIfNeeded(in: container)
+            print("[Conduit] Post-recovery container ready.")
+            return container
+        }
+        print("[Conduit] Post-recovery attempt failed — using in-memory fallback.")
+
+        // ── Attempt 3: in-memory (data won't persist, but app stays alive) ────
+        let s3 = makeSchema()
+        guard let container = try? ModelContainer(
+            for: s3,
+            configurations: [ModelConfiguration(schema: s3,
+                                                isStoredInMemoryOnly: true,
+                                                cloudKitDatabase: .none)]
+        ) else {
+            fatalError("[Conduit] Cannot initialise any container. Schema is fundamentally broken.")
+        }
+        return container
     }()
+
+    @State private var syncMonitor = CloudSyncMonitor()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(EntitlementManager.shared)
+                .environment(syncMonitor)
+                // Re-verify entitlements every time the app comes to the foreground.
+                // This is the safety net for devices that were already running when a
+                // purchase was made on another device — Transaction.updates only fires
+                // while the stream is being observed, so it can be missed if the app
+                // was backgrounded. currentEntitlements always reflects the true state.
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else { return }
+                    Task { await EntitlementManager.shared.refreshEntitlements() }
+                    syncMonitor.refreshAccountStatus()
+                }
         }
         .modelContainer(sharedModelContainer)
     }
+
+    // MARK: - Helpers
+
+    private static func isStoreFile(_ url: URL) -> Bool {
+        let ext  = url.pathExtension
+        let name = url.lastPathComponent
+        return ext == "sqlite" || ext == "store"
+            || name.hasSuffix(".sqlite-wal") || name.hasSuffix(".sqlite-shm")
+            || name.hasSuffix(".store-wal")  || name.hasSuffix(".store-shm")
+    }
+
+    // MARK: - Demo seed
 
     private static func seedDemoProjectIfNeeded(in container: ModelContainer) {
         let seedKey = "hasCreatedDemoProject"
         guard !UserDefaults.standard.bool(forKey: seedKey) else { return }
 
         let context = ModelContext(container)
-        let descriptor = FetchDescriptor<Client>()
-
         do {
-            guard try context.fetchCount(descriptor) == 0 else {
+            guard try context.fetchCount(FetchDescriptor<Client>()) == 0 else {
                 UserDefaults.standard.set(true, forKey: seedKey)
                 return
             }
@@ -82,14 +164,14 @@ struct ConduitApp: App {
             context.insert(section)
             context.insert(field)
 
-            _ = KeychainManager.save(key: "\(deployment.id)-dbPassword", value: "demo-password")
+            _ = KeychainManager.save(key: "\(deployment.id)-dbPassword",           value: "demo-password")
             _ = KeychainManager.save(key: "\(deployment.id)-systemAccessPassword", value: "demo-password")
-            _ = KeychainManager.save(key: "\(deployment.id)-adminAccessPassword", value: "demo-password")
+            _ = KeychainManager.save(key: "\(deployment.id)-adminAccessPassword",  value: "demo-password")
 
             try context.save()
             UserDefaults.standard.set(true, forKey: seedKey)
         } catch {
-            print("Could not seed demo project: \(error)")
+            print("[Conduit] Demo seed failed: \(error)")
         }
     }
 }

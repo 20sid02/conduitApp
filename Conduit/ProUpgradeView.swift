@@ -190,7 +190,7 @@ struct ProUpgradeView: View {
                         ProgressView()
                             .tint(.white)
                     } else {
-                        Text(selectedProduct.map { "Get Pro — \($0.displayPrice)" } ?? "Get Conduit Pro")
+                        Text(selectedProduct.map { "Get Pro — \($0.displayPrice)" } ?? "Get Conduit Plus")
                             .font(.body.weight(.bold))
                     }
                 }

@@ -19,18 +19,19 @@ struct ClientDetailView: View {
         ConduitBackground {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    let deploymentCount = client.deployments?.count ?? 0
                     ScreenHeader(
                         title: client.name,
-                        action: client.deployments.count < entitlements.maxDeploymentsPerClient ? {
+                        action: deploymentCount < entitlements.maxDeploymentsPerClient ? {
                             showingAddDeploymentSheet = true
                         } : nil
                     )
 
-                    if client.deployments.count >= entitlements.maxDeploymentsPerClient {
+                    if deploymentCount >= entitlements.maxDeploymentsPerClient {
                         ProGateCard(feature: .unlimitedDeployments)
                     }
 
-                    if client.deployments.isEmpty {
+                    if client.deployments?.isEmpty ?? true {
                         EmptyStateCard(
                             systemImage: "server.rack",
                             title: "No deployments yet",
@@ -38,7 +39,7 @@ struct ClientDetailView: View {
                         )
                     } else {
                         LazyVStack(spacing: 12) {
-                            ForEach(client.deployments) { deployment in
+                            ForEach(client.deployments ?? []) { deployment in
                                 NavigationLink {
                                     DeploymentDetailView(deployment: deployment)
                                 } label: {

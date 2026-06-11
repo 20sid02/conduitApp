@@ -5,6 +5,25 @@
 
 import Foundation
 
+// MARK: - Optional relationship helpers
+//
+// CloudKit requires all to-many relationships to be typed as [T]?.
+// These extensions let call sites keep the same .append / .removeAll
+// syntax they used when the arrays were non-optional.
+
+extension Optional where Wrapped: RangeReplaceableCollection {
+    /// Appends `newElement`, initialising the collection to empty first if nil.
+    mutating func append(_ newElement: Wrapped.Element) {
+        if self == nil { self = Wrapped() }
+        self!.append(newElement)
+    }
+
+    /// Removes all elements satisfying `shouldRemove`, silently ignoring nil.
+    mutating func removeAll(where shouldRemove: (Wrapped.Element) throws -> Bool) rethrows {
+        try self?.removeAll(where: shouldRemove)
+    }
+}
+
 extension Deployment {
     var displayName: String {
         let trimmedAppName = appName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -53,8 +72,8 @@ func deleteStoredCredentials(for deployment: Deployment) {
     ["dbHost", "dbPassword", "systemAccessPassword", "djangoAdminPassword", "adminAccessPassword"].forEach { keySuffix in
         _ = KeychainManager.delete(key: "\(deployment.id)-\(keySuffix)")
     }
-    deployment.customSections
-        .flatMap(\.fields)
+    (deployment.customSections ?? [])
+        .flatMap { $0.fields ?? [] }
         .filter { $0.fieldType == .password }
         .forEach { field in
             _ = KeychainManager.delete(key: field.keychainKey)

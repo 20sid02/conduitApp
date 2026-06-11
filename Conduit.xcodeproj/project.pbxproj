@@ -29,9 +29,22 @@
 		FD07B6AE2FD58FC500E978AC /* ConduitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ConduitUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		FD084F5E2FDA6C5A0003B48E /* Exceptions for "Conduit" folder in "Conduit" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = FD07B6942FD58FC400E978AC /* Conduit */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		FD07B6972FD58FC400E978AC /* Conduit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				FD084F5E2FDA6C5A0003B48E /* Exceptions for "Conduit" folder in "Conduit" target */,
+			);
 			path = Conduit;
 			sourceTree = "<group>";
 		};
@@ -399,6 +412,7 @@
 				DEVELOPMENT_TEAM = 2963PZRWND;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Conduit/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Conduit;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock saved deployment credentials.";
@@ -436,6 +450,7 @@
 				DEVELOPMENT_TEAM = 2963PZRWND;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Conduit/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Conduit;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Unlock saved deployment credentials.";

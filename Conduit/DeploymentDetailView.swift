@@ -165,7 +165,7 @@ struct DeploymentDetailView: View {
 
     @ViewBuilder
     private var internalRoutingSection: some View {
-        if !deployment.internalRoutes.isEmpty {
+        if !(deployment.internalRoutes?.isEmpty ?? true) {
             VStack(alignment: .leading, spacing: 10) {
                 SectionTitle(title: "Internal Routing / Ports Used")
                 GlassCard {
@@ -258,7 +258,7 @@ struct DeploymentDetailView: View {
                     .padding(.horizontal, 2)
 
                     GlassCard {
-                        if section.fields.isEmpty {
+                        if section.fields?.isEmpty ?? true {
                             Text("No custom fields")
                                 .foregroundStyle(ConduitTheme.muted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -267,7 +267,7 @@ struct DeploymentDetailView: View {
                             VStack(spacing: 0) {
                                 ForEach(Array(sortedFields(for: section).enumerated()), id: \.element.id) { index, field in
                                     customFieldRow(field)
-                                    if index < section.fields.count - 1 {
+                                    if index < (section.fields?.count ?? 0) - 1 {
                                         DividerLine()
                                     }
                                 }
@@ -367,7 +367,7 @@ struct DeploymentDetailView: View {
     }
 
     private var sortedCustomSections: [CustomSettingSection] {
-        deployment.customSections.sorted {
+        (deployment.customSections ?? []).sorted {
             $0.sortOrder == $1.sortOrder
                 ? $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
                 : $0.sortOrder < $1.sortOrder
@@ -375,7 +375,7 @@ struct DeploymentDetailView: View {
     }
 
     private var sortedInternalRoutes: [InternalRoute] {
-        deployment.internalRoutes.sorted {
+        (deployment.internalRoutes ?? []).sorted {
             $0.sortOrder == $1.sortOrder
                 ? $0.serviceName.localizedCaseInsensitiveCompare($1.serviceName) == .orderedAscending
                 : $0.sortOrder < $1.sortOrder
@@ -383,7 +383,7 @@ struct DeploymentDetailView: View {
     }
 
     private func sortedFields(for section: CustomSettingSection) -> [CustomSettingField] {
-        section.fields.sorted {
+        (section.fields ?? []).sorted {
             $0.sortOrder == $1.sortOrder
                 ? $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending
                 : $0.sortOrder < $1.sortOrder
@@ -478,7 +478,7 @@ struct DeploymentDetailView: View {
     }
 
     private func deleteCustomSection(_ section: CustomSettingSection) {
-        section.fields
+        (section.fields ?? [])
             .filter { $0.fieldType == .password }
             .forEach { field in _ = KeychainManager.delete(key: field.keychainKey) }
         deployment.customSections.removeAll { $0.id == section.id }
@@ -489,7 +489,7 @@ struct DeploymentDetailView: View {
         if field.fieldType == .password {
             _ = KeychainManager.delete(key: field.keychainKey)
         }
-        field.section.fields.removeAll { $0.id == field.id }
+        field.section?.fields.removeAll { $0.id == field.id }
         modelContext.delete(field)
     }
 }

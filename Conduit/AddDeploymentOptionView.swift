@@ -191,7 +191,7 @@ struct AddDeploymentOptionView: View {
                 deployment: deployment,
                 serviceName: trimmedRouteServiceName,
                 port: port,
-                sortOrder: deployment.internalRoutes.count
+                sortOrder: deployment.internalRoutes?.count ?? 0
             )
             deployment.internalRoutes.append(route)
             modelContext.insert(route)
@@ -223,7 +223,7 @@ struct AddDeploymentOptionView: View {
             let newSection = CustomSettingSection(
                 deployment: deployment,
                 title: trimmedCustomSectionTitle,
-                sortOrder: deployment.customSections.count
+                sortOrder: deployment.customSections?.count ?? 0
             )
             deployment.customSections.append(newSection)
             return newSection
@@ -234,7 +234,7 @@ struct AddDeploymentOptionView: View {
             label: trimmedCustomFieldLabel,
             value: customFieldType == .password ? nil : normalizedCustomFieldValue(),
             type: customFieldType,
-            sortOrder: section.fields.count
+            sortOrder: section.fields?.count ?? 0
         )
         section.fields.append(field)
 
@@ -244,7 +244,7 @@ struct AddDeploymentOptionView: View {
     }
 
     private func existingCustomSection() -> CustomSettingSection? {
-        deployment.customSections.first {
+        (deployment.customSections ?? []).first {
             $0.title.trimmingCharacters(in: .whitespacesAndNewlines)
                 .localizedCaseInsensitiveCompare(trimmedCustomSectionTitle) == .orderedSame
         }

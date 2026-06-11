@@ -12,6 +12,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(EntitlementManager.self) private var entitlements
+    @Environment(CloudSyncMonitor.self) private var syncMonitor
 
     let clients: [Client]
     @State private var showingDeleteAllConfirmation = false
@@ -21,6 +22,7 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 proSection
+                syncSection
 
                 Section("About Conduit") {
                     Text("Conduit is my local-first workspace for tracking clients, deployments, ports, URLs, and credentials without needing an account or backend.")
@@ -153,6 +155,27 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Sync section
+
+    @ViewBuilder
+    private var syncSection: some View {
+        Section {
+            if entitlements.isEnabled(.cloudSync) {
+                CloudSyncView()
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            } else {
+                ProGateCard(feature: .cloudSync)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
+        } header: {
+            Text("iCloud Sync")
+        } footer: {
+            Text("Conduit syncs your client and deployment records across all your Apple devices using your personal iCloud account. Credentials remain exclusively in the Keychain and are never synced.")
+        }
+    }
+
     // MARK: - Helpers
 
     private func sendFeedback() {
@@ -188,7 +211,7 @@ struct SettingsView: View {
 
     private func deleteAllLocalData() {
         clients.forEach { client in
-            client.deployments.forEach(deleteStoredCredentials)
+            (client.deployments ?? []).forEach(deleteStoredCredentials)
             modelContext.delete(client)
         }
     }

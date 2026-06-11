@@ -136,22 +136,33 @@ final class EntitlementManager {
 
     // MARK: Entitlement refresh
 
+    /// Checks `Transaction.currentEntitlements` — valid on every device signed into the
+    /// same Apple ID, so this is the canonical cross-device entitlement source.
+    /// Always dispatches the final `isPro` write to MainActor to avoid data races on
+    /// the @Observable property, which is read directly by SwiftUI on the main thread.
     func refreshEntitlements() async {
         var hasValidEntitlement = false
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
-            if ProductID.all.contains(transaction.productID) && transaction.revocationDate == nil {
+            if ProductID.all.contains(transaction.productID),
+               transaction.revocationDate == nil {
                 hasValidEntitlement = true
                 break
             }
         }
-        isPro = hasValidEntitlement
+        await MainActor.run {
+            isPro = hasValidEntitlement
+        }
     }
 
     // MARK: Transaction listener
 
+    /// Observes `Transaction.updates`, which delivers cross-device transactions
+    /// (purchases, renewals, revocations from any device on the same Apple ID)
+    /// while the app is running. Calls `refreshEntitlements()` so the verified
+    /// currentEntitlements set — not just the single arriving transaction — drives state.
     private func listenForTransactions() -> Task<Void, Never> {
-        Task.detached { [weak self] in
+        Task.detached(priority: .background) { [weak self] in
             for await result in Transaction.updates {
                 guard case .verified(let transaction) = result else { continue }
                 await transaction.finish()

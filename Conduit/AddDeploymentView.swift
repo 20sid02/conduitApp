@@ -49,7 +49,7 @@ struct AddDeploymentView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { saveDeployment() }
                         .disabled(trimmedAppName.isEmpty
-                                  || client.deployments.count >= entitlements.maxDeploymentsPerClient)
+                                  || (client.deployments?.count ?? 0) >= entitlements.maxDeploymentsPerClient)
                 }
             }
         }

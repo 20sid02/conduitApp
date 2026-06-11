@@ -9,8 +9,8 @@ private func conduitTrimmed(_ value: String) -> String {
 
 private func conduitTrimmedOptional(_ value: String?) -> String? {
     guard let value else { return nil }
-    let trimmedValue = conduitTrimmed(value)
-    return trimmedValue.isEmpty ? nil : trimmedValue
+    let trimmed = conduitTrimmed(value)
+    return trimmed.isEmpty ? nil : trimmed
 }
 
 private func conduitOptionalPort(_ port: Int?) -> Int? {
@@ -22,17 +22,27 @@ private func conduitRequiredPort(_ port: Int) -> Int {
     conduitValidPortRange.contains(port) ? port : 1
 }
 
+// MARK: - Client
+
 @Model
 final class Client {
-    @Attribute(.unique) var id: UUID
-    var name: String
-    var createdAt: Date
-    var keychainVaultId: String
+    // Inline defaults are required so CoreData's entity description sees a non-nil
+    // defaultValue for every attribute — a CloudKit schema constraint.
+    var id: UUID            = UUID()
+    var name: String        = ""
+    var createdAt: Date     = Date()
+    var keychainVaultId: String = ""
 
+    // [Deployment]? (optional to-many) satisfies CloudKit's isOptional = YES requirement.
     @Relationship(deleteRule: .cascade, inverse: \Deployment.client)
-    var deployments: [Deployment] = []
+    var deployments: [Deployment]?
 
-    init(id: UUID = UUID(), name: String, createdAt: Date = Date(), keychainVaultId: String = UUID().uuidString) {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        createdAt: Date = Date(),
+        keychainVaultId: String = UUID().uuidString
+    ) {
         self.id = id
         self.name = conduitTrimmed(name)
         self.createdAt = createdAt
@@ -40,12 +50,14 @@ final class Client {
     }
 }
 
+// MARK: - Deployment
+
 @Model
 final class Deployment {
-    @Attribute(.unique) var id: UUID
+    var id: UUID            = UUID()
     var appName: String?
-    var dateDeployed: Date
-    var isOnline: Bool
+    var dateDeployed: Date  = Date()
+    var isOnline: Bool      = false
     var deploymentURL: String?
     var systemPort: Int?
     var dbName: String?
@@ -53,13 +65,15 @@ final class Deployment {
     var adminUsername: String?
     @Attribute(originalName: "itsUsername") var username: String?
 
-    var client: Client
+    // Optional so CloudKit can sync a Deployment before its parent Client arrives.
+    // No @Relationship annotation — the inverse is already declared on Client.deployments.
+    var client: Client?
 
     @Relationship(deleteRule: .cascade, inverse: \InternalRoute.deployment)
-    var internalRoutes: [InternalRoute] = []
+    var internalRoutes: [InternalRoute]?
 
     @Relationship(deleteRule: .cascade, inverse: \CustomSettingSection.deployment)
-    var customSections: [CustomSettingSection] = []
+    var customSections: [CustomSettingSection]?
 
     init(
         id: UUID = UUID(),
@@ -88,16 +102,24 @@ final class Deployment {
     }
 }
 
+// MARK: - InternalRoute
+
 @Model
 final class InternalRoute {
-    @Attribute(.unique) var id: UUID
-    var serviceName: String
-    var port: Int
-    var sortOrder: Int
+    var id: UUID        = UUID()
+    var serviceName: String = ""
+    var port: Int       = 1
+    var sortOrder: Int  = 0
 
-    var deployment: Deployment
+    var deployment: Deployment?
 
-    init(id: UUID = UUID(), deployment: Deployment, serviceName: String, port: Int, sortOrder: Int = 0) {
+    init(
+        id: UUID = UUID(),
+        deployment: Deployment,
+        serviceName: String,
+        port: Int,
+        sortOrder: Int = 0
+    ) {
         self.id = id
         self.deployment = deployment
         self.serviceName = conduitTrimmed(serviceName)
@@ -106,18 +128,25 @@ final class InternalRoute {
     }
 }
 
+// MARK: - CustomSettingSection
+
 @Model
 final class CustomSettingSection {
-    @Attribute(.unique) var id: UUID
-    var title: String
-    var sortOrder: Int
+    var id: UUID        = UUID()
+    var title: String   = ""
+    var sortOrder: Int  = 0
 
-    var deployment: Deployment
+    var deployment: Deployment?
 
     @Relationship(deleteRule: .cascade, inverse: \CustomSettingField.section)
-    var fields: [CustomSettingField] = []
+    var fields: [CustomSettingField]?
 
-    init(id: UUID = UUID(), deployment: Deployment, title: String, sortOrder: Int = 0) {
+    init(
+        id: UUID = UUID(),
+        deployment: Deployment,
+        title: String,
+        sortOrder: Int = 0
+    ) {
         self.id = id
         self.deployment = deployment
         self.title = conduitTrimmed(title)
@@ -125,15 +154,17 @@ final class CustomSettingSection {
     }
 }
 
+// MARK: - CustomSettingField
+
 @Model
 final class CustomSettingField {
-    @Attribute(.unique) var id: UUID
-    var label: String
+    var id: UUID            = UUID()
+    var label: String       = ""
     var value: String?
-    var typeRawValue: String
-    var sortOrder: Int
+    var typeRawValue: String = CustomSettingFieldType.text.rawValue
+    var sortOrder: Int      = 0
 
-    var section: CustomSettingSection
+    var section: CustomSettingSection?
 
     init(
         id: UUID = UUID(),
@@ -151,6 +182,8 @@ final class CustomSettingField {
         self.sortOrder = sortOrder
     }
 }
+
+// MARK: - CustomSettingFieldType
 
 enum CustomSettingFieldType: String, CaseIterable, Identifiable {
     case text
