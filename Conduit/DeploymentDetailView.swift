@@ -49,13 +49,12 @@ struct DeploymentDetailView: View {
         .sheet(isPresented: $showingAddOptionSheet) {
             AddDeploymentOptionView(deployment: deployment)
         }
-        .confirmationDialog(
+        .alert(
             "Delete this internal route?",
             isPresented: Binding(
                 get: { routePendingDeletion != nil },
                 set: { if !$0 { routePendingDeletion = nil } }
-            ),
-            titleVisibility: .visible
+            )
         ) {
             Button("Delete Internal Route", role: .destructive) {
                 if let route = routePendingDeletion {
@@ -67,21 +66,13 @@ struct DeploymentDetailView: View {
         } message: {
             Text("This removes the saved service name and port from this deployment.")
         }
-        .confirmationDialog(
-            "Delete database config?",
-            isPresented: $showingDeleteDatabaseConfirmation,
-            titleVisibility: .visible
-        ) {
+        .alert("Delete database config?", isPresented: $showingDeleteDatabaseConfirmation) {
             Button("Delete Database Config", role: .destructive) { deleteDatabaseConfig() }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This removes the database fields and saved database credentials for this deployment.")
         }
-        .confirmationDialog(
-            "Delete admin access?",
-            isPresented: $showingDeleteAdminConfirmation,
-            titleVisibility: .visible
-        ) {
+        .alert("Delete admin access?", isPresented: $showingDeleteAdminConfirmation) {
             Button("Delete Admin Access", role: .destructive) { deleteAdminAccess() }
             Button("Cancel", role: .cancel) {}
         } message: {

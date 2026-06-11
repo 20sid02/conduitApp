@@ -16,6 +16,7 @@ struct SettingsView: View {
 
     let clients: [Client]
     @State private var showingDeleteAllConfirmation = false
+    @State private var showingDeleteFinalConfirmation = false
     @State private var showingUpgrade = false
     @State private var isCheckingPurchase = false
 
@@ -25,8 +26,8 @@ struct SettingsView: View {
                 proSection
                 syncSection
 
-                Section("About Conduit") {
-                    Text("Conduit is my local-first workspace for tracking clients, deployments, ports, URLs, and credentials without needing an account or backend.")
+                Section("About Conduit Plus") {
+                    Text("Conduit Plus is a local-first infrastructure workspace for developers. Track unlimited clients, deployments, ports, URLs, and credentials — synced across your Apple devices via iCloud, with no account or backend required.")
                         .font(.subheadline)
                         .foregroundStyle(ConduitTheme.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -40,14 +41,14 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Text("I am building Conduit to make server and client work easier to keep track of. If something feels confusing, broken, or genuinely useful, I would really like to hear it.")
+                    Text("Conduit Plus is built to make managing servers and client infrastructure less painful. If something feels off, broken, or genuinely useful, I would really like to hear it.")
                         .font(.subheadline)
                         .foregroundStyle(ConduitTheme.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Section("Privacy") {
-                    Text("Conduit does not use an account or backend. Project details stay on this device, and saved credentials are stored separately in the iOS Keychain.")
+                    Text("Conduit Plus has no account, no backend, and no telemetry. Your infrastructure data stays on your devices and syncs privately through your personal iCloud container. Credentials are stored exclusively in the iOS Keychain and are never included in iCloud sync.")
                         .font(.subheadline)
                         .foregroundStyle(ConduitTheme.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -63,13 +64,13 @@ struct SettingsView: View {
                     Button(role: .destructive) {
                         showingDeleteAllConfirmation = true
                     } label: {
-                        Label("Delete All Local Data", systemImage: "trash")
+                        Label("Nuke Database", systemImage: "trash")
                     }
                     .disabled(clients.isEmpty)
                 } header: {
                     Text("Testing")
                 } footer: {
-                    Text("Removes all clients, deployments, custom options, and saved Conduit credentials from this device.")
+                    Text("This will remove all data from database.")
                 }
             }
             .keyboardDismissControls()
@@ -83,15 +84,17 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .confirmationDialog(
-                "Delete all local Conduit data?",
-                isPresented: $showingDeleteAllConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Delete All Local Data", role: .destructive) { deleteAllLocalData() }
+            .alert("Nuke Database?", isPresented: $showingDeleteAllConfirmation) {
+                Button("Continue", role: .destructive) { showingDeleteFinalConfirmation = true }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This cannot be undone. It removes all local project records and saved credentials from this device.")
+                Text("This will remove all data from database. This cannot be undone.")
+            }
+            .alert("Are you absolutely sure?", isPresented: $showingDeleteFinalConfirmation) {
+                Button("Nuke Database", role: .destructive) { deleteAllLocalData() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Every client, deployment, and credential on this device will be permanently deleted.")
             }
             .sheet(isPresented: $showingUpgrade) {
                 ProUpgradeView()
@@ -108,7 +111,7 @@ struct SettingsView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundStyle(ConduitTheme.online)
-                    Text("Conduit Pro — Active")
+                    Text("Conduit Plus — Active")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(ConduitTheme.primary)
                     Spacer()
@@ -130,7 +133,7 @@ struct SettingsView: View {
                         Image(systemName: "bolt.shield.fill")
                             .foregroundStyle(ConduitTheme.accent)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Upgrade to Conduit Pro")
+                            Text("Upgrade to Conduit Plus")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(ConduitTheme.primary)
                             Text("Unlimited clients, sync, API vault & more")
@@ -175,7 +178,7 @@ struct SettingsView: View {
                         .foregroundStyle(ConduitTheme.offline)
                 }
             } header: {
-                Text("Conduit Pro")
+                Text("Conduit Plus")
             }
         }
     }

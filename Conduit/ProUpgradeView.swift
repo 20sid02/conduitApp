@@ -78,7 +78,7 @@ struct ProUpgradeView: View {
             }
 
             VStack(spacing: 6) {
-                Text("Conduit Pro")
+                Text("Conduit Plus")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(ConduitTheme.primary)
 
@@ -190,7 +190,7 @@ struct ProUpgradeView: View {
                     if isPurchasing {
                         ProgressView().tint(.white)
                     } else {
-                        Text(selectedProduct.map { "Get Pro — \($0.displayPrice)" } ?? "Get Conduit Pro")
+                        Text(selectedProduct.map { "Get Plus — \($0.displayPrice)" } ?? "Get Conduit Plus")
                             .font(.body.weight(.bold))
                     }
                 }
@@ -255,7 +255,7 @@ struct ProUpgradeView: View {
                     .foregroundStyle(ConduitTheme.online)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("You have Conduit Pro")
+                    Text("You have Conduit Plus")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(ConduitTheme.primary)
                     Text("All features are unlocked.")

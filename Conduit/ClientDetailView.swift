@@ -64,11 +64,7 @@ struct ClientDetailView: View {
         }
         .navigationTitle("")
         .toolbarBackground(.hidden, for: .navigationBar)
-        .confirmationDialog(
-            "Delete this deployment?",
-            isPresented: $showingDeleteDeploymentConfirmation,
-            titleVisibility: .visible
-        ) {
+        .alert("Delete this deployment?", isPresented: $showingDeleteDeploymentConfirmation) {
             Button("Delete Deployment", role: .destructive) {
                 if let deployment = deploymentPendingDeletion { deleteDeployment(deployment) }
             }

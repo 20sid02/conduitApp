@@ -71,11 +71,7 @@ struct ContentView: View {
             .navigationTitle("")
             .toolbarBackground(.hidden, for: .navigationBar)
             .modifier(SearchableIfEnabled(text: $searchText, isEnabled: entitlements.isSearchEnabled))
-            .confirmationDialog(
-                "Delete this client?",
-                isPresented: $showingDeleteClientConfirmation,
-                titleVisibility: .visible
-            ) {
+            .alert("Delete this client?", isPresented: $showingDeleteClientConfirmation) {
                 Button("Delete Client", role: .destructive) {
                     if let client = clientPendingDeletion { deleteClient(client) }
                 }
