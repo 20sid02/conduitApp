@@ -143,6 +143,7 @@ struct ContentView: View {
     }
 
     private func deleteClient(_ client: Client) {
+        VaultManager.deleteAllEntries(for: client.keychainVaultId)
         (client.deployments ?? []).forEach(deleteStoredCredentials)
         modelContext.delete(client)
         clientPendingDeletion = nil

@@ -64,6 +64,8 @@ struct ClientDetailView: View {
                         }
                     }
 
+                    VaultSectionView(client: client)
+
                     emergencyDirectorySection
                 }
                 .padding(.horizontal, 20)
