@@ -212,21 +212,32 @@ struct DeploymentDetailView: View {
     @ViewBuilder
     private var databaseConfigSection: some View {
         if deployment.hasDatabaseConfig {
+            let hasDbHost = KeychainManager.read(key: "\(deployment.id)-dbHost") != nil
+            let hasDbPassword = KeychainManager.read(key: "\(deployment.id)-dbPassword") != nil
+
             editableSection("Database Config") {
-                EditableRow(title: "Database Name") {
-                    darkTextField("Not Set", text: optionalStringBinding(\.dbName))
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                if deployment.dbName != nil {
+                    EditableRow(title: "Database Name") {
+                        darkTextField("Not Set", text: optionalStringBinding(\.dbName))
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
                 }
-                DividerLine()
-                EditableRow(title: "Database Port") {
-                    darkTextField("Not Set", text: optionalIntBinding(\.dbPort))
-                        .keyboardType(.numberPad)
+                if deployment.dbPort != nil {
+                    if deployment.dbName != nil { DividerLine() }
+                    EditableRow(title: "Database Port") {
+                        darkTextField("Not Set", text: optionalIntBinding(\.dbPort))
+                            .keyboardType(.numberPad)
+                    }
                 }
-                DividerLine()
-                SecureCredentialView(deployment: deployment, title: "Database Host / Token", keySuffix: "dbHost")
-                DividerLine()
-                SecureCredentialView(deployment: deployment, title: "Database Password", keySuffix: "dbPassword")
+                if hasDbHost {
+                    if deployment.dbName != nil || deployment.dbPort != nil { DividerLine() }
+                    SecureCredentialView(deployment: deployment, title: "Database Host / Token", keySuffix: "dbHost")
+                }
+                if hasDbPassword {
+                    if deployment.dbName != nil || deployment.dbPort != nil || hasDbHost { DividerLine() }
+                    SecureCredentialView(deployment: deployment, title: "Database Password", keySuffix: "dbPassword")
+                }
             }
             .onLongPressGesture {
                 showingDeleteDatabaseConfirmation = true

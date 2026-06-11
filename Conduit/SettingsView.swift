@@ -13,6 +13,7 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @Environment(EntitlementManager.self) private var entitlements
     @Environment(CloudSyncMonitor.self) private var syncMonitor
+    @Environment(ThemeManager.self) private var themeManager
 
     let clients: [Client]
     @State private var showingDeleteAllConfirmation = false
@@ -25,6 +26,7 @@ struct SettingsView: View {
             List {
                 proSection
                 syncSection
+                appearanceSection
 
                 Section("About Conduit Plus") {
                     Text("Conduit Plus is a local-first infrastructure workspace for developers. Track unlimited clients, deployments, ports, URLs, and credentials — synced across your Apple devices via iCloud, with no account or backend required.")
@@ -204,6 +206,39 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Appearance section
+
+    @ViewBuilder
+    private var appearanceSection: some View {
+        Section {
+            if entitlements.isEnabled(.customization) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: 12)], spacing: 12) {
+                    ForEach(AppTheme.allCases) { theme in
+                        ThemeTile(
+                            theme: theme,
+                            isSelected: themeManager.selectedTheme == theme
+                        ) {
+                            themeManager.applyTheme(theme)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            } else {
+                ProGateCard(feature: .customization)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
+        } header: {
+            Text("Appearance")
+        } footer: {
+            if entitlements.isEnabled(.customization) {
+                Text("Alternate app icons are swapped automatically when you pick a theme. Icon assets must be configured in Xcode for the swap to take effect.")
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private func sendFeedback() {
@@ -242,5 +277,53 @@ struct SettingsView: View {
             (client.deployments ?? []).forEach(deleteStoredCredentials)
             modelContext.delete(client)
         }
+    }
+}
+
+// MARK: - ThemeTile
+
+private struct ThemeTile: View {
+    let theme: AppTheme
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 6) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [theme.backgroundTop, theme.backgroundBottom],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 56, height: 40)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(
+                                    isSelected ? theme.accent : Color.white.opacity(0.15),
+                                    lineWidth: isSelected ? 2 : 1
+                                )
+                        )
+
+                    Circle()
+                        .fill(theme.accent)
+                        .frame(width: 14, height: 14)
+                        .shadow(color: theme.accent.opacity(0.6), radius: 5)
+                }
+
+                Text(theme.displayName)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(isSelected ? ConduitTheme.primary : ConduitTheme.muted)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(width: 64)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(theme.displayName)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

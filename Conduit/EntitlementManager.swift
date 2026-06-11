@@ -16,6 +16,7 @@ enum ProFeature: CaseIterable {
     case cloudSync
     case apiKeyVault
     case portDiagnostics
+    case customization
 
     var displayName: String {
         switch self {
@@ -25,6 +26,7 @@ enum ProFeature: CaseIterable {
         case .cloudSync:            "iCloud Sync"
         case .apiKeyVault:          "API Key Vault"
         case .portDiagnostics:      "Port & Ping Diagnostics"
+        case .customization:        "Themes & App Icons"
         }
     }
 
@@ -36,6 +38,7 @@ enum ProFeature: CaseIterable {
         case .cloudSync:            "Keep your data in sync across all your devices."
         case .apiKeyVault:          "Store and organise API keys with biometric unlock."
         case .portDiagnostics:      "Ping hosts and detect port conflicts in real time."
+        case .customization:        "Switch terminal accent themes and alternate app icons."
         }
     }
 
@@ -47,6 +50,7 @@ enum ProFeature: CaseIterable {
         case .cloudSync:            "icloud.and.arrow.up.fill"
         case .apiKeyVault:          "key.fill"
         case .portDiagnostics:      "network"
+        case .customization:        "paintpalette.fill"
         }
     }
 }

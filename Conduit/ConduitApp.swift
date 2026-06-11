@@ -89,12 +89,14 @@ struct ConduitApp: App {
     }()
 
     @State private var syncMonitor = CloudSyncMonitor()
+    @State private var themeManager = ThemeManager.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(EntitlementManager.shared)
                 .environment(syncMonitor)
+                .environment(themeManager)
                 // Re-verify entitlements when the app returns to the foreground.
                 // Guard: skip if already Pro — the payment sheet causes an
                 // active→inactive→active cycle, so this fires right after a

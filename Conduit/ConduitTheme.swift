@@ -7,25 +7,19 @@ import SwiftUI
 import UIKit
 
 enum ConduitTheme {
-    static let backgroundTop = Color(red: 0.04, green: 0.11, blue: 0.17)
-    static let backgroundBottom = Color(red: 0.00, green: 0.02, blue: 0.03)
-    static let card = Color.white.opacity(0.075)
-    static let inset = Color.white.opacity(0.07)
-    static let stroke = Color.white.opacity(0.12)
+    // Static colors shared across all themes
+    static let card    = Color.white.opacity(0.075)
+    static let inset   = Color.white.opacity(0.07)
+    static let stroke  = Color.white.opacity(0.12)
     static let primary = Color.white
     static let secondary = Color.white.opacity(0.66)
-    static let muted = Color.white.opacity(0.42)
-    static let accent = Color(red: 0.16, green: 0.55, blue: 1.0)
-    static let online = Color(red: 0.15, green: 0.92, blue: 0.38)
+    static let muted   = Color.white.opacity(0.42)
+    static let online  = Color(red: 0.15, green: 0.92, blue: 0.38)
     static let offline = Color(red: 0.95, green: 0.24, blue: 0.24)
 
-    static var background: LinearGradient {
-        LinearGradient(
-            colors: [backgroundTop, backgroundBottom],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
+    // Theme-aware: reading these inside a SwiftUI body subscribes to ThemeManager changes.
+    static var accent: Color       { ThemeManager.shared.accent }
+    static var background: LinearGradient { ThemeManager.shared.background }
 }
 
 let validPortRange = 1...65_535
