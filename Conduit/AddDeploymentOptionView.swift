@@ -193,8 +193,10 @@ struct AddDeploymentOptionView: View {
                 port: port,
                 sortOrder: deployment.internalRoutes?.count ?? 0
             )
-            deployment.internalRoutes.append(route)
+            // Insert into the context BEFORE wiring the relationship so that CoreData
+            // owns the object when it builds the CKRecord reference for CloudKit sync.
             modelContext.insert(route)
+            deployment.internalRoutes.append(route)
 
         case .databaseConfig:
             if !trimmedDbName.isEmpty { deployment.dbName = trimmedDbName }
@@ -210,6 +212,7 @@ struct AddDeploymentOptionView: View {
             saveCustomSetting()
         }
 
+        try? modelContext.save()
         dismiss()
     }
 
@@ -219,15 +222,19 @@ struct AddDeploymentOptionView: View {
     }
 
     private func saveCustomSetting() {
-        let section = existingCustomSection() ?? {
+        let section: CustomSettingSection
+        if let existing = existingCustomSection() {
+            section = existing
+        } else {
             let newSection = CustomSettingSection(
                 deployment: deployment,
                 title: trimmedCustomSectionTitle,
                 sortOrder: deployment.customSections?.count ?? 0
             )
+            modelContext.insert(newSection)
             deployment.customSections.append(newSection)
-            return newSection
-        }()
+            section = newSection
+        }
 
         let field = CustomSettingField(
             section: section,
@@ -236,6 +243,7 @@ struct AddDeploymentOptionView: View {
             type: customFieldType,
             sortOrder: section.fields?.count ?? 0
         )
+        modelContext.insert(field)
         section.fields.append(field)
 
         if customFieldType == .password {

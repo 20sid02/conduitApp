@@ -168,7 +168,7 @@ struct ProUpgradeView: View {
 
     @ViewBuilder
     private var ctaSection: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             if let error = entitlements.purchaseError {
                 Text(error)
                     .font(.caption)
@@ -176,6 +176,7 @@ struct ProUpgradeView: View {
                     .multilineTextAlignment(.center)
             }
 
+            // ── Buy button ────────────────────────────────────────────────────
             Button {
                 guard let product = selectedProduct else { return }
                 isPurchasing = true
@@ -187,10 +188,9 @@ struct ProUpgradeView: View {
             } label: {
                 Group {
                     if isPurchasing {
-                        ProgressView()
-                            .tint(.white)
+                        ProgressView().tint(.white)
                     } else {
-                        Text(selectedProduct.map { "Get Pro — \($0.displayPrice)" } ?? "Get Conduit Plus")
+                        Text(selectedProduct.map { "Get Pro — \($0.displayPrice)" } ?? "Get Conduit Pro")
                             .font(.body.weight(.bold))
                     }
                 }
@@ -204,6 +204,7 @@ struct ProUpgradeView: View {
             }
             .disabled(selectedProduct == nil || isPurchasing || isRestoring)
 
+            // ── Already-bought button ─────────────────────────────────────────
             Button {
                 isRestoring = true
                 Task {
@@ -212,16 +213,28 @@ struct ProUpgradeView: View {
                     if entitlements.isPro { dismiss() }
                 }
             } label: {
-                Group {
+                HStack(spacing: 8) {
                     if isRestoring {
                         ProgressView()
+                            .controlSize(.small)
                             .tint(ConduitTheme.secondary)
-                    } else {
-                        Text("Restore Purchases")
-                            .font(.subheadline)
+                        Text("Checking…")
+                            .font(.subheadline.weight(.medium))
                             .foregroundStyle(ConduitTheme.secondary)
+                    } else {
+                        Image(systemName: "checkmark.circle")
+                            .font(.subheadline.weight(.semibold))
+                        Text("I already bought this")
+                            .font(.subheadline.weight(.medium))
                     }
                 }
+                .foregroundStyle(isRestoring ? ConduitTheme.secondary : ConduitTheme.accent)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(ConduitTheme.accent.opacity(isRestoring ? 0.06 : 0.10))
+                )
             }
             .disabled(isPurchasing || isRestoring)
 

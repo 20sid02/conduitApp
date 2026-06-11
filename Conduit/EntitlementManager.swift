@@ -57,11 +57,15 @@ enum ProFeature: CaseIterable {
 final class EntitlementManager {
     static let shared = EntitlementManager()
 
-    private(set) var isPro: Bool = false
+    /// Persisted so the UI never flashes free-tier state after a confirmed purchase,
+    /// even if StoreKit's server takes a moment to reflect the entitlement.
+    /// Only set to false when currentEntitlements explicitly contains a revoked product.
+    private(set) var isPro: Bool = UserDefaults.standard.bool(forKey: EntitlementManager.proKey)
     private(set) var products: [Product] = []
     private(set) var isLoadingProducts: Bool = false
     private(set) var purchaseError: String?
 
+    private static let proKey = "conduit.isProUser"
     private var transactionListener: Task<Void, Never>?
 
     enum ProductID {
@@ -87,86 +91,160 @@ final class EntitlementManager {
 
     func isEnabled(_ feature: ProFeature) -> Bool { isPro }
 
+    // MARK: - Pro flag persistence
+
+    /// Sets `isPro` and writes the value to UserDefaults so it survives the race
+    /// window between a verified transaction and Apple's server propagation delay.
+    /// Call this only when the outcome is known with certainty (verified transaction
+    /// or confirmed revocation from currentEntitlements).
+    @MainActor
+    private func setProStatus(_ value: Bool) {
+        isPro = value
+        UserDefaults.standard.set(value, forKey: Self.proKey)
+    }
+
     // MARK: Product loading
 
     func loadProducts() async {
         guard products.isEmpty else { return }
-        isLoadingProducts = true
-        defer { isLoadingProducts = false }
+        await MainActor.run { isLoadingProducts = true }
+        defer { Task { await MainActor.run { self.isLoadingProducts = false } } }
         do {
-            products = try await Product.products(for: ProductID.all)
+            let fetched = try await Product.products(for: ProductID.all)
                 .sorted { $0.price < $1.price }
+            await MainActor.run { products = fetched }
         } catch {
-            purchaseError = error.localizedDescription
+            await MainActor.run { purchaseError = error.localizedDescription }
         }
     }
 
     // MARK: Purchase
 
     func purchase(_ product: Product) async {
-        purchaseError = nil
+        await MainActor.run { purchaseError = nil }
         do {
             let result = try await product.purchase()
             switch result {
             case .success(let verification):
-                guard case .verified(let transaction) = verification else { return }
-                await transaction.finish()
-                await refreshEntitlements()
+                switch verification {
+                case .verified(let transaction):
+                    // Cryptographically valid — persist Pro immediately.
+                    // Do NOT call refreshEntitlements() here; the server may have a
+                    // propagation delay and currentEntitlements can return 0 items for
+                    // several seconds after a successful payment.
+                    await transaction.finish()
+                    await setProStatus(true)
+
+                case .unverified(let transaction, let error):
+                    // Local JWS check failed; fall back to server-side entitlement check.
+                    print("[StoreKit] Purchase unverified locally (\(error)) — checking entitlements.")
+                    await transaction.finish()
+                    await refreshEntitlements()
+                }
+
             case .userCancelled, .pending:
                 break
             @unknown default:
                 break
             }
         } catch {
-            purchaseError = error.localizedDescription
+            await MainActor.run { purchaseError = error.localizedDescription }
+            print("[StoreKit] Purchase threw: \(error)")
         }
     }
 
     // MARK: Restore
 
     func restorePurchases() async {
-        purchaseError = nil
+        await MainActor.run { purchaseError = nil }
+
         do {
             try await AppStore.sync()
-            await refreshEntitlements()
         } catch {
-            purchaseError = error.localizedDescription
+            print("[StoreKit] AppStore.sync() threw: \(error). Proceeding anyway.")
+        }
+
+        await refreshEntitlements()
+
+        if !isPro {
+            await MainActor.run {
+                purchaseError = "No active purchase found for this Apple ID."
+            }
         }
     }
 
     // MARK: Entitlement refresh
 
-    /// Checks `Transaction.currentEntitlements` — valid on every device signed into the
-    /// same Apple ID, so this is the canonical cross-device entitlement source.
-    /// Always dispatches the final `isPro` write to MainActor to avoid data races on
-    /// the @Observable property, which is read directly by SwiftUI on the main thread.
     func refreshEntitlements() async {
-        var hasValidEntitlement = false
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result else { continue }
-            if ProductID.all.contains(transaction.productID),
-               transaction.revocationDate == nil {
-                hasValidEntitlement = true
-                break
+        // Finish any unacknowledged transactions from other devices first.
+        for await result in Transaction.unfinished {
+            switch result {
+            case .verified(let t):   await t.finish()
+            case .unverified(let t, _): _ = t  // leave it; StoreKit will retry
             }
         }
+
+        // Walk current entitlements.
+        // • hasValidEntitlement  → confirmed active Pro purchase
+        // • hasRevokedEntitlement → confirmed revocation/refund
+        // • neither              → server propagation delay or no purchase; leave state alone
+        var hasValidEntitlement    = false
+        var hasRevokedEntitlement  = false
+
+        for await result in Transaction.currentEntitlements {
+            switch result {
+            case .verified(let t) where ProductID.all.contains(t.productID):
+                if t.revocationDate != nil {
+                    hasRevokedEntitlement = true
+                } else {
+                    hasValidEntitlement = true
+                }
+            case .verified:
+                break   // unrelated product
+            case .unverified:
+                break   // can't trust it; ignore
+            }
+        }
+
         await MainActor.run {
-            isPro = hasValidEntitlement
+            if hasValidEntitlement {
+                // Confirmed active — persist Pro.
+                isPro = true
+                UserDefaults.standard.set(true, forKey: Self.proKey)
+            } else if hasRevokedEntitlement {
+                // Explicit revocation (refund, cancellation) — remove Pro.
+                isPro = false
+                UserDefaults.standard.set(false, forKey: Self.proKey)
+            }
+            // Zero entitlements returned → Apple's servers haven't propagated yet,
+            // or the user has never purchased. Either way, leave `isPro` at its
+            // current persisted value so we don't clobber a just-completed purchase.
         }
     }
 
     // MARK: Transaction listener
 
-    /// Observes `Transaction.updates`, which delivers cross-device transactions
-    /// (purchases, renewals, revocations from any device on the same Apple ID)
-    /// while the app is running. Calls `refreshEntitlements()` so the verified
-    /// currentEntitlements set — not just the single arriving transaction — drives state.
     private func listenForTransactions() -> Task<Void, Never> {
         Task.detached(priority: .background) { [weak self] in
             for await result in Transaction.updates {
-                guard case .verified(let transaction) = result else { continue }
-                await transaction.finish()
-                await self?.refreshEntitlements()
+                switch result {
+                case .verified(let transaction):
+                    await transaction.finish()
+                    if EntitlementManager.ProductID.all.contains(transaction.productID) {
+                        if transaction.revocationDate == nil {
+                            // Active purchase delivered outside the app (cross-device restore,
+                            // subscription renewal, etc.) — persist Pro immediately.
+                            await self?.setProStatus(true)
+                        } else {
+                            // Revocation arrived — do a full entitlement refresh to confirm.
+                            await self?.refreshEntitlements()
+                        }
+                    }
+                case .unverified(let transaction, let error):
+                    print("[StoreKit] Unverified update: \(transaction.productID) — \(error)")
+                    await transaction.finish()
+                    await self?.refreshEntitlements()
+                }
             }
         }
     }

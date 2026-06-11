@@ -17,6 +17,7 @@ struct SettingsView: View {
     let clients: [Client]
     @State private var showingDeleteAllConfirmation = false
     @State private var showingUpgrade = false
+    @State private var isCheckingPurchase = false
 
     var body: some View {
         NavigationStack {
@@ -145,9 +146,33 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
 
                 Button {
-                    Task { await entitlements.restorePurchases() }
+                    isCheckingPurchase = true
+                    Task {
+                        await entitlements.restorePurchases()
+                        isCheckingPurchase = false
+                    }
                 } label: {
-                    Label("Restore Purchases", systemImage: "arrow.clockwise")
+                    HStack(spacing: 10) {
+                        if isCheckingPurchase {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(ConduitTheme.secondary)
+                            Text("Checking…")
+                                .foregroundStyle(ConduitTheme.secondary)
+                        } else {
+                            Image(systemName: "checkmark.circle")
+                                .foregroundStyle(ConduitTheme.accent)
+                            Text("I already bought this")
+                                .foregroundStyle(ConduitTheme.accent)
+                        }
+                    }
+                }
+                .disabled(isCheckingPurchase)
+
+                if let error = entitlements.purchaseError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(ConduitTheme.offline)
                 }
             } header: {
                 Text("Conduit Pro")

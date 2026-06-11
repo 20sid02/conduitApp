@@ -95,14 +95,16 @@ struct ConduitApp: App {
             ContentView()
                 .environment(EntitlementManager.shared)
                 .environment(syncMonitor)
-                // Re-verify entitlements every time the app comes to the foreground.
-                // This is the safety net for devices that were already running when a
-                // purchase was made on another device — Transaction.updates only fires
-                // while the stream is being observed, so it can be missed if the app
-                // was backgrounded. currentEntitlements always reflects the true state.
+                // Re-verify entitlements when the app returns to the foreground.
+                // Guard: skip if already Pro — the payment sheet causes an
+                // active→inactive→active cycle, so this fires right after a
+                // purchase and races against Apple's server propagation delay,
+                // clobbering the isPro = true we just set from the verified transaction.
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active else { return }
-                    Task { await EntitlementManager.shared.refreshEntitlements() }
+                    if !EntitlementManager.shared.isPro {
+                        Task { await EntitlementManager.shared.refreshEntitlements() }
+                    }
                     syncMonitor.refreshAccountStatus()
                 }
         }
@@ -147,22 +149,23 @@ struct ConduitApp: App {
                 adminUsername: "demo-admin",
                 username: "deploy"
             )
-            client.deployments.append(deployment)
             context.insert(deployment)
+            client.deployments.append(deployment)
 
             let route = InternalRoute(deployment: deployment, serviceName: "Web App", port: 8080)
-            deployment.internalRoutes.append(route)
             context.insert(route)
+            deployment.internalRoutes.append(route)
 
             let section = CustomSettingSection(deployment: deployment, title: "Notes", sortOrder: 0)
+            context.insert(section)
+            deployment.customSections.append(section)
+
             let field = CustomSettingField(
                 section: section, label: "Environment",
                 value: "Beta demo", type: .text, sortOrder: 0
             )
-            section.fields.append(field)
-            deployment.customSections.append(section)
-            context.insert(section)
             context.insert(field)
+            section.fields.append(field)
 
             _ = KeychainManager.save(key: "\(deployment.id)-dbPassword",           value: "demo-password")
             _ = KeychainManager.save(key: "\(deployment.id)-systemAccessPassword", value: "demo-password")
