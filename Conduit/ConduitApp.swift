@@ -108,6 +108,21 @@ struct ConduitApp: App {
                         Task { await EntitlementManager.shared.refreshEntitlements() }
                     }
                     syncMonitor.refreshAccountStatus()
+                    WidgetDataCache.refresh(
+                        using: sharedModelContainer,
+                        theme: themeManager.selectedTheme.rawValue
+                    )
+                }
+                .onOpenURL { url in
+                    // conduit://deployment/{uuid}  — deep link from widget tap
+                    guard url.scheme == "conduit",
+                          url.host == "deployment",
+                          let idString = url.pathComponents.dropFirst().first,
+                          UUID(uuidString: idString) != nil
+                    else { return }
+                    // Store the pending ID; ContentView can observe DeepLinkRouter
+                    // to programmatically navigate once path-based navigation is added.
+                    DeepLinkRouter.shared.pendingDeploymentID = idString
                 }
         }
         .modelContainer(sharedModelContainer)

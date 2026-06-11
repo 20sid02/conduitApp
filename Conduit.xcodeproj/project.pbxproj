@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		FD837F552FDABDF300D5D9E2 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD837F542FDABDF300D5D9E2 /* WidgetKit.framework */; };
+		FD837F572FDABDF300D5D9E2 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FD837F562FDABDF300D5D9E2 /* SwiftUI.framework */; };
+		FD837F662FDABDF400D5D9E2 /* ConduitWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FD837F522FDABDF300D5D9E2 /* ConduitWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		FD07B6A52FD58FC500E978AC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,12 +27,37 @@
 			remoteGlobalIDString = FD07B6942FD58FC400E978AC;
 			remoteInfo = Conduit;
 		};
+		FD837F642FDABDF400D5D9E2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FD07B68D2FD58FC400E978AC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FD837F512FDABDF300D5D9E2;
+			remoteInfo = ConduitWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FD837F6B2FDABDF400D5D9E2 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				FD837F662FDABDF400D5D9E2 /* ConduitWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		FD07B6952FD58FC400E978AC /* Conduit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Conduit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD07B6A42FD58FC500E978AC /* ConduitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ConduitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD07B6AE2FD58FC500E978AC /* ConduitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ConduitUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD837F522FDABDF300D5D9E2 /* ConduitWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ConduitWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD837F542FDABDF300D5D9E2 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		FD837F562FDABDF300D5D9E2 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		FD837F6E2FDABE9F00D5D9E2 /* ConduitWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ConduitWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -36,6 +67,13 @@
 				Info.plist,
 			);
 			target = FD07B6942FD58FC400E978AC /* Conduit */;
+		};
+		FD837F6A2FDABDF400D5D9E2 /* Exceptions for "ConduitWidget" folder in "ConduitWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = FD837F512FDABDF300D5D9E2 /* ConduitWidgetExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -56,6 +94,14 @@
 		FD07B6B12FD58FC500E978AC /* ConduitUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ConduitUITests;
+			sourceTree = "<group>";
+		};
+		FD837F582FDABDF300D5D9E2 /* ConduitWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				FD837F6A2FDABDF400D5D9E2 /* Exceptions for "ConduitWidget" folder in "ConduitWidgetExtension" target */,
+			);
+			path = ConduitWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -82,15 +128,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FD837F4F2FDABDF300D5D9E2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FD837F572FDABDF300D5D9E2 /* SwiftUI.framework in Frameworks */,
+				FD837F552FDABDF300D5D9E2 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		FD07B68C2FD58FC400E978AC = {
 			isa = PBXGroup;
 			children = (
+				FD837F6E2FDABE9F00D5D9E2 /* ConduitWidgetExtension.entitlements */,
 				FD07B6972FD58FC400E978AC /* Conduit */,
 				FD07B6A72FD58FC500E978AC /* ConduitTests */,
 				FD07B6B12FD58FC500E978AC /* ConduitUITests */,
+				FD837F582FDABDF300D5D9E2 /* ConduitWidget */,
+				FD837F532FDABDF300D5D9E2 /* Frameworks */,
 				FD07B6962FD58FC400E978AC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,8 +159,18 @@
 				FD07B6952FD58FC400E978AC /* Conduit.app */,
 				FD07B6A42FD58FC500E978AC /* ConduitTests.xctest */,
 				FD07B6AE2FD58FC500E978AC /* ConduitUITests.xctest */,
+				FD837F522FDABDF300D5D9E2 /* ConduitWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		FD837F532FDABDF300D5D9E2 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				FD837F542FDABDF300D5D9E2 /* WidgetKit.framework */,
+				FD837F562FDABDF300D5D9E2 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -115,10 +183,12 @@
 				FD07B6912FD58FC400E978AC /* Sources */,
 				FD07B6922FD58FC400E978AC /* Frameworks */,
 				FD07B6932FD58FC400E978AC /* Resources */,
+				FD837F6B2FDABDF400D5D9E2 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				FD837F652FDABDF400D5D9E2 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				FD07B6972FD58FC400E978AC /* Conduit */,
@@ -176,6 +246,28 @@
 			productReference = FD07B6AE2FD58FC500E978AC /* ConduitUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		FD837F512FDABDF300D5D9E2 /* ConduitWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FD837F672FDABDF400D5D9E2 /* Build configuration list for PBXNativeTarget "ConduitWidgetExtension" */;
+			buildPhases = (
+				FD837F4E2FDABDF300D5D9E2 /* Sources */,
+				FD837F4F2FDABDF300D5D9E2 /* Frameworks */,
+				FD837F502FDABDF300D5D9E2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				FD837F582FDABDF300D5D9E2 /* ConduitWidget */,
+			);
+			name = ConduitWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = ConduitWidgetExtension;
+			productReference = FD837F522FDABDF300D5D9E2 /* ConduitWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -197,6 +289,9 @@
 						CreatedOnToolsVersion = 26.5;
 						TestTargetID = FD07B6942FD58FC400E978AC;
 					};
+					FD837F512FDABDF300D5D9E2 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 				};
 			};
 			buildConfigurationList = FD07B6902FD58FC400E978AC /* Build configuration list for PBXProject "Conduit" */;
@@ -216,6 +311,7 @@
 				FD07B6942FD58FC400E978AC /* Conduit */,
 				FD07B6A32FD58FC500E978AC /* ConduitTests */,
 				FD07B6AD2FD58FC500E978AC /* ConduitUITests */,
+				FD837F512FDABDF300D5D9E2 /* ConduitWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -236,6 +332,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		FD07B6AC2FD58FC500E978AC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FD837F502FDABDF300D5D9E2 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -266,6 +369,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FD837F4E2FDABDF300D5D9E2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -278,6 +388,11 @@
 			isa = PBXTargetDependency;
 			target = FD07B6942FD58FC400E978AC /* Conduit */;
 			targetProxy = FD07B6AF2FD58FC500E978AC /* PBXContainerItemProxy */;
+		};
+		FD837F652FDABDF400D5D9E2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FD837F512FDABDF300D5D9E2 /* ConduitWidgetExtension */;
+			targetProxy = FD837F642FDABDF400D5D9E2 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -557,6 +672,68 @@
 			};
 			name = Release;
 		};
+		FD837F682FDABDF400D5D9E2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = ConduitWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2963PZRWND;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ConduitWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ConduitWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.mahajan.conduit.ConduitWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		FD837F692FDABDF400D5D9E2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = ConduitWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2963PZRWND;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ConduitWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ConduitWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.mahajan.conduit.ConduitWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -592,6 +769,15 @@
 			buildConfigurations = (
 				FD07B6BF2FD58FC500E978AC /* Debug */,
 				FD07B6C02FD58FC500E978AC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FD837F672FDABDF400D5D9E2 /* Build configuration list for PBXNativeTarget "ConduitWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FD837F682FDABDF400D5D9E2 /* Debug */,
+				FD837F692FDABDF400D5D9E2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
