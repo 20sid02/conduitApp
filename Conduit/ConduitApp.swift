@@ -29,6 +29,7 @@ struct ConduitApp: App {
                 InternalRoute.self,
                 CustomSettingSection.self,
                 CustomSettingField.self,
+                ContactEntry.self,
             ])
         }
 
@@ -44,7 +45,6 @@ struct ConduitApp: App {
                                                 isStoredInMemoryOnly: false,
                                                 cloudKitDatabase: .automatic)]
         ) {
-            seedDemoProjectIfNeeded(in: container)
             print("[Conduit] Container ready (CloudKit: automatic).")
             return container
         }
@@ -69,7 +69,6 @@ struct ConduitApp: App {
                                                 isStoredInMemoryOnly: false,
                                                 cloudKitDatabase: .automatic)]
         ) {
-            seedDemoProjectIfNeeded(in: container)
             print("[Conduit] Post-recovery container ready.")
             return container
         }
@@ -136,62 +135,5 @@ struct ConduitApp: App {
         return ext == "sqlite" || ext == "store"
             || name.hasSuffix(".sqlite-wal") || name.hasSuffix(".sqlite-shm")
             || name.hasSuffix(".store-wal")  || name.hasSuffix(".store-shm")
-    }
-
-    // MARK: - Demo seed
-
-    private static func seedDemoProjectIfNeeded(in container: ModelContainer) {
-        let seedKey = "hasCreatedDemoProject"
-        guard !UserDefaults.standard.bool(forKey: seedKey) else { return }
-
-        let context = ModelContext(container)
-        do {
-            guard try context.fetchCount(FetchDescriptor<Client>()) == 0 else {
-                UserDefaults.standard.set(true, forKey: seedKey)
-                return
-            }
-
-            let client = Client(name: "Demo Client")
-            context.insert(client)
-
-            let deployment = Deployment(
-                client: client,
-                appName: "Demo Server",
-                dateDeployed: Date(),
-                isOnline: true,
-                deploymentURL: "demo.example.test",
-                systemPort: 8080,
-                dbName: "demo_app",
-                dbPort: 5432,
-                adminUsername: "demo-admin",
-                username: "deploy"
-            )
-            context.insert(deployment)
-            client.deployments.append(deployment)
-
-            let route = InternalRoute(deployment: deployment, serviceName: "Web App", port: 8080)
-            context.insert(route)
-            deployment.internalRoutes.append(route)
-
-            let section = CustomSettingSection(deployment: deployment, title: "Notes", sortOrder: 0)
-            context.insert(section)
-            deployment.customSections.append(section)
-
-            let field = CustomSettingField(
-                section: section, label: "Environment",
-                value: "Beta demo", type: .text, sortOrder: 0
-            )
-            context.insert(field)
-            section.fields.append(field)
-
-            _ = KeychainManager.save(key: "\(deployment.id)-dbPassword",           value: "demo-password")
-            _ = KeychainManager.save(key: "\(deployment.id)-systemAccessPassword", value: "demo-password")
-            _ = KeychainManager.save(key: "\(deployment.id)-adminAccessPassword",  value: "demo-password")
-
-            try context.save()
-            UserDefaults.standard.set(true, forKey: seedKey)
-        } catch {
-            print("[Conduit] Demo seed failed: \(error)")
-        }
     }
 }

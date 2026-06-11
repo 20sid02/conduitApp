@@ -20,6 +20,7 @@ struct ConduitBackground<Content: View>: View {
 
 struct ScreenHeader: View {
     let title: String
+    var infoAction: (() -> Void)?
     var settingsAction: (() -> Void)?
     var action: (() -> Void)?
 
@@ -30,6 +31,17 @@ struct ScreenHeader: View {
                 .foregroundStyle(ConduitTheme.primary)
 
             Spacer()
+
+            if let infoAction {
+                Button(action: infoAction) {
+                    Image(systemName: "info.circle")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(ConduitTheme.secondary)
+                        .frame(width: 44, height: 44)
+                        .background(.white.opacity(0.08), in: Circle())
+                }
+                .accessibilityLabel("Help")
+            }
 
             if let settingsAction {
                 Button(action: settingsAction) {

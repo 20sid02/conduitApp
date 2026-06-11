@@ -37,6 +37,9 @@ final class Client {
     @Relationship(deleteRule: .cascade, inverse: \Deployment.client)
     var deployments: [Deployment]?
 
+    @Relationship(deleteRule: .cascade, inverse: \ContactEntry.client)
+    var contacts: [ContactEntry]?
+
     init(
         id: UUID = UUID(),
         name: String,
@@ -179,6 +182,44 @@ final class CustomSettingField {
         self.label = conduitTrimmed(label)
         self.value = conduitTrimmedOptional(value)
         self.typeRawValue = type.rawValue
+        self.sortOrder = sortOrder
+    }
+}
+
+// MARK: - ContactEntry
+
+@Model
+final class ContactEntry {
+    var id: UUID            = UUID()
+    var name: String        = ""
+    var role: String?
+    var phone: String?
+    var email: String?
+    var supportPortal: String?
+    var accountNotes: String?
+    var sortOrder: Int      = 0
+
+    var client: Client?
+
+    init(
+        id: UUID = UUID(),
+        client: Client,
+        name: String,
+        role: String? = nil,
+        phone: String? = nil,
+        email: String? = nil,
+        supportPortal: String? = nil,
+        accountNotes: String? = nil,
+        sortOrder: Int = 0
+    ) {
+        self.id = id
+        self.client = client
+        self.name = conduitTrimmed(name)
+        self.role = conduitTrimmedOptional(role)
+        self.phone = conduitTrimmedOptional(phone)
+        self.email = conduitTrimmedOptional(email)
+        self.supportPortal = conduitTrimmedOptional(supportPortal)
+        self.accountNotes = conduitTrimmedOptional(accountNotes)
         self.sortOrder = sortOrder
     }
 }

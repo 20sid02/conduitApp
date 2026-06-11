@@ -8,6 +8,7 @@ import SwiftData
 
 struct ClientDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.openURL) private var openURL
     @Environment(EntitlementManager.self) private var entitlements
 
     @Bindable var client: Client
@@ -15,6 +16,9 @@ struct ClientDetailView: View {
     @State private var showingUpgrade = false
     @State private var deploymentPendingDeletion: Deployment?
     @State private var showingDeleteDeploymentConfirmation = false
+    @State private var showingAddContactSheet = false
+    @State private var contactPendingDeletion: ContactEntry?
+    @State private var showingDeleteContactConfirmation = false
 
     var body: some View {
         ConduitBackground {
@@ -59,6 +63,8 @@ struct ClientDetailView: View {
                             }
                         }
                     }
+
+                    emergencyDirectorySection
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
@@ -82,6 +88,17 @@ struct ClientDetailView: View {
         .sheet(isPresented: $showingUpgrade) {
             ProUpgradeView()
         }
+        .sheet(isPresented: $showingAddContactSheet) {
+            AddContactView(client: client)
+        }
+        .alert("Delete this contact?", isPresented: $showingDeleteContactConfirmation) {
+            Button("Delete Contact", role: .destructive) {
+                if let contact = contactPendingDeletion { deleteContact(contact) }
+            }
+            Button("Cancel", role: .cancel) { contactPendingDeletion = nil }
+        } message: {
+            Text("This removes the contact entry from this client's emergency directory.")
+        }
     }
 
     private func deleteDeployment(_ deployment: Deployment) {
@@ -89,6 +106,147 @@ struct ClientDetailView: View {
         client.deployments.removeAll { $0.id == deployment.id }
         modelContext.delete(deployment)
         deploymentPendingDeletion = nil
+    }
+
+    // MARK: - Emergency Directory
+
+    private var sortedContacts: [ContactEntry] {
+        (client.contacts ?? []).sorted {
+            $0.sortOrder == $1.sortOrder
+                ? $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+                : $0.sortOrder < $1.sortOrder
+        }
+    }
+
+    private var emergencyDirectorySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                SectionTitle(title: "Emergency Directory")
+                Spacer()
+                Button {
+                    showingAddContactSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(ConduitTheme.accent)
+                        .frame(width: 32, height: 32)
+                        .background(.white.opacity(0.08), in: Circle())
+                }
+                .accessibilityLabel("Add Contact")
+            }
+
+            if sortedContacts.isEmpty {
+                GlassCard {
+                    HStack(spacing: 12) {
+                        Image(systemName: "person.crop.circle.badge.exclamationmark")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(ConduitTheme.muted)
+                        Text("No contacts — add on-call staff, support lines, or vendor portals.")
+                            .font(.subheadline)
+                            .foregroundStyle(ConduitTheme.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                GlassCard {
+                    VStack(spacing: 0) {
+                        ForEach(Array(sortedContacts.enumerated()), id: \.element.id) { index, contact in
+                            contactCard(contact)
+                            if index < sortedContacts.count - 1 {
+                                DividerLine()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func contactCard(_ contact: ContactEntry) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(contact.name)
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(ConduitTheme.primary)
+
+                if let role = contact.role {
+                    Text(role)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(ConduitTheme.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(.white.opacity(0.08), in: Capsule())
+                }
+
+                Spacer()
+
+                Button(role: .destructive) {
+                    contactPendingDeletion = contact
+                    showingDeleteContactConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(ConduitTheme.offline)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Delete contact")
+            }
+
+            if let phone = contact.phone {
+                Button {
+                    let digits = phone.filter { $0.isNumber || $0 == "+" }
+                    if let url = URL(string: "tel:\(digits)") { openURL(url) }
+                } label: {
+                    Label(phone, systemImage: "phone.fill")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(ConduitTheme.accent)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if let email = contact.email {
+                Button {
+                    if let url = URL(string: "mailto:\(email)") { openURL(url) }
+                } label: {
+                    Label(email, systemImage: "envelope.fill")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(ConduitTheme.accent)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if let portal = contact.supportPortal {
+                Button {
+                    let raw = portal.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let url = URL(string: raw)?.scheme != nil
+                        ? URL(string: raw)
+                        : URL(string: "https://\(raw)")
+                    if let url { openURL(url) }
+                } label: {
+                    Label(portal, systemImage: "globe")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(ConduitTheme.accent)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if let notes = contact.accountNotes {
+                Text(notes)
+                    .font(.caption)
+                    .foregroundStyle(ConduitTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 10)
+    }
+
+    private func deleteContact(_ contact: ContactEntry) {
+        client.contacts.removeAll { $0.id == contact.id }
+        modelContext.delete(contact)
+        contactPendingDeletion = nil
     }
 }
 

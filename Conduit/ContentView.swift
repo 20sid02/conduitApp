@@ -18,6 +18,10 @@ struct ContentView: View {
     @State private var showingDeleteClientConfirmation = false
     @State private var showingSettings = false
     @State private var showingUpgrade = false
+    @State private var showingOnboarding = false
+
+    @AppStorage("conduit.onboarding.shownFree") private var hasSeenFreeOnboarding = false
+    @AppStorage("conduit.onboarding.shownPro")  private var hasSeenProOnboarding  = false
 
     private let router = DeepLinkRouter.shared
 
@@ -28,6 +32,7 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         ScreenHeader(
                             title: "Keyring",
+                            infoAction: { showingOnboarding = true },
                             settingsAction: { showingSettings = true },
                             action: {
                                 if clients.count < entitlements.maxClients {
@@ -89,8 +94,30 @@ struct ContentView: View {
             .sheet(isPresented: $showingAddSheet) { AddClientView() }
             .sheet(isPresented: $showingSettings) { SettingsView(clients: clients) }
             .sheet(isPresented: $showingUpgrade) { ProUpgradeView() }
-            .onAppear { handlePendingDeepLink() }
+            .sheet(isPresented: $showingOnboarding) {
+                OnboardingView(isPro: entitlements.isPro) {
+                    if entitlements.isPro {
+                        hasSeenProOnboarding = true
+                    } else {
+                        hasSeenFreeOnboarding = true
+                    }
+                    showingOnboarding = false
+                }
+            }
+            .onAppear {
+                handlePendingDeepLink()
+                checkOnboarding()
+            }
             .onChange(of: router.pendingDeploymentID) { handlePendingDeepLink() }
+            .onChange(of: entitlements.isPro) { checkOnboarding() }
+        }
+    }
+
+    private func checkOnboarding() {
+        if entitlements.isPro {
+            if !hasSeenProOnboarding { showingOnboarding = true }
+        } else {
+            if !hasSeenFreeOnboarding { showingOnboarding = true }
         }
     }
 
@@ -177,11 +204,11 @@ private struct ClientCard: View {
 
 #Preview("ContentView") {
     ContentView()
-        .modelContainer(for: [Client.self, Deployment.self, InternalRoute.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
+        .modelContainer(for: [Client.self, Deployment.self, InternalRoute.self, CustomSettingSection.self, CustomSettingField.self, ContactEntry.self], inMemory: true)
         .environment(EntitlementManager.shared)
 }
 
 #Preview("AddClientView") {
     AddClientView()
-        .modelContainer(for: [Client.self, Deployment.self, InternalRoute.self, CustomSettingSection.self, CustomSettingField.self], inMemory: true)
+        .modelContainer(for: [Client.self, Deployment.self, InternalRoute.self, CustomSettingSection.self, CustomSettingField.self, ContactEntry.self], inMemory: true)
 }
