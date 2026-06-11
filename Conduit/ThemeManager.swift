@@ -5,7 +5,6 @@
 
 import SwiftUI
 import Observation
-import UIKit
 
 // MARK: - AppTheme
 
@@ -53,16 +52,6 @@ enum AppTheme: String, CaseIterable, Identifiable {
         }
     }
 
-    // Matches CFBundleAlternateIcons key in Info.plist.
-    // nil → revert to the default app icon.
-    var alternateIconName: String? {
-        switch self {
-        case .midnight:       nil
-        case .matrixGreen:    "AppIconGreen"
-        case .cyberpunkAmber: "AppIconAmber"
-        case .draculaSlate:   "AppIconSlate"
-        }
-    }
 }
 
 // MARK: - ThemeManager
@@ -94,25 +83,7 @@ final class ThemeManager {
         selectedTheme = AppTheme(rawValue: saved) ?? .midnight
     }
 
-    @MainActor
     func applyTheme(_ theme: AppTheme) {
         selectedTheme = theme
-        guard UIApplication.shared.supportsAlternateIcons else { return }
-        UIApplication.shared.setAlternateIconName(theme.alternateIconName) { error in
-            if let error {
-                print("[ThemeManager] Icon switch failed: \(error.localizedDescription)")
-            }
-        }
-        // iOS presents a system "You Have Changed the Icon" UIAlertController
-        // automatically. Dismiss it silently — the tile selection is confirmation enough.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            guard let scene = UIApplication.shared.connectedScenes
-                .compactMap({ $0 as? UIWindowScene })
-                .first(where: { $0.activationState == .foregroundActive }),
-                  let root = scene.keyWindow?.rootViewController else { return }
-            var top = root
-            while let presented = top.presentedViewController { top = presented }
-            if top is UIAlertController { top.dismiss(animated: false) }
-        }
     }
 }

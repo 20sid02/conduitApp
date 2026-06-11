@@ -234,7 +234,7 @@ struct SettingsView: View {
             Text("Appearance")
         } footer: {
             if entitlements.isEnabled(.customization) {
-                Text("Alternate app icons are swapped automatically when you pick a theme. Icon assets must be configured in Xcode for the swap to take effect.")
+                Text("Choose a color theme for the app interface.")
             }
         }
     }

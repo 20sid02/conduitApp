@@ -11,6 +11,7 @@ struct ContentView: View {
     @Environment(EntitlementManager.self) private var entitlements
 
     @Query(sort: \Client.createdAt, order: .reverse) private var clients: [Client]
+    @State private var navigationPath = NavigationPath()
     @State private var showingAddSheet = false
     @State private var searchText = ""
     @State private var clientPendingDeletion: Client?
@@ -18,8 +19,10 @@ struct ContentView: View {
     @State private var showingSettings = false
     @State private var showingUpgrade = false
 
+    private let router = DeepLinkRouter.shared
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ConduitBackground {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
@@ -50,9 +53,7 @@ struct ContentView: View {
                         } else {
                             LazyVStack(spacing: 12) {
                                 ForEach(filteredClients) { client in
-                                    NavigationLink {
-                                        ClientDetailView(client: client)
-                                    } label: {
+                                    NavigationLink(value: client) {
                                         ClientCard(client: client)
                                     }
                                     .buttonStyle(.plain)
@@ -83,10 +84,26 @@ struct ContentView: View {
             } message: {
                 Text("This removes the client, deployments, and saved credentials from this device.")
             }
+            .navigationDestination(for: Client.self) { ClientDetailView(client: $0) }
+            .navigationDestination(for: Deployment.self) { DeploymentDetailView(deployment: $0) }
             .sheet(isPresented: $showingAddSheet) { AddClientView() }
             .sheet(isPresented: $showingSettings) { SettingsView(clients: clients) }
             .sheet(isPresented: $showingUpgrade) { ProUpgradeView() }
+            .onAppear { handlePendingDeepLink() }
+            .onChange(of: router.pendingDeploymentID) { handlePendingDeepLink() }
         }
+    }
+
+    private func handlePendingDeepLink() {
+        guard let idString = router.pendingDeploymentID,
+              let id = UUID(uuidString: idString),
+              let deployment = clients.flatMap({ $0.deployments ?? [] }).first(where: { $0.id == id }),
+              let client = deployment.client
+        else { return }
+        navigationPath = NavigationPath()
+        navigationPath.append(client)
+        navigationPath.append(deployment)
+        router.pendingDeploymentID = nil
     }
 
     private var filteredClients: [Client] {

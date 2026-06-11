@@ -46,9 +46,7 @@ struct ClientDetailView: View {
                     } else {
                         LazyVStack(spacing: 12) {
                             ForEach(client.deployments ?? []) { deployment in
-                                NavigationLink {
-                                    DeploymentDetailView(deployment: deployment)
-                                } label: {
+                                NavigationLink(value: deployment) {
                                     DeploymentRow(deployment: deployment)
                                 }
                                 .buttonStyle(.plain)
