@@ -32,7 +32,7 @@ struct AddDeploymentView: View {
                         .keyboardType(.URL)
                         .autocorrectionDisabled()
 
-                    TextField("System Port (e.g., 8000)", text: numericTextBinding($systemPort))
+                    TextField("System Port (if applicable)", text: numericTextBinding($systemPort))
                         .keyboardType(.numberPad)
                 }
             }

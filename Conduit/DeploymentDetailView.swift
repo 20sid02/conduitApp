@@ -11,10 +11,15 @@ struct DeploymentDetailView: View {
     @Environment(\.openURL) private var openURL
 
     @Bindable var deployment: Deployment
+    @State private var diagnostics = NetworkDiagnosticService()
     @State private var showingAddOptionSheet = false
+    @State private var showingUpgradeForPing = false
+    @State private var pingPulse = false
     @State private var routePendingDeletion: InternalRoute?
     @State private var showingDeleteDatabaseConfirmation = false
     @State private var showingDeleteAdminConfirmation = false
+
+    @Environment(EntitlementManager.self) private var entitlements
 
     var body: some View {
         ConduitBackground {
@@ -24,13 +29,7 @@ struct DeploymentDetailView: View {
                         showingAddOptionSheet = true
                     })
 
-                    HStack(spacing: 8) {
-                        StatusDot(isOnline: deployment.isOnline)
-                        Text(deployment.isOnline ? "System Online" : "System Offline")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(ConduitTheme.secondary)
-                    }
-                    .padding(.top, -8)
+                    pingStatusRow
 
                     systemInfoSection
                     databaseConfigSection
@@ -48,6 +47,26 @@ struct DeploymentDetailView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingAddOptionSheet) {
             AddDeploymentOptionView(deployment: deployment)
+        }
+        .sheet(isPresented: $showingUpgradeForPing) {
+            ProUpgradeView()
+        }
+        .onChange(of: diagnostics.status) { _, new in
+            switch new {
+            case .checking:
+                pingPulse = false
+                withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
+                    pingPulse = true
+                }
+            case .reachable:
+                pingPulse = false
+                deployment.isOnline = true
+            case .unreachable:
+                pingPulse = false
+                deployment.isOnline = false
+            case .idle:
+                pingPulse = false
+            }
         }
         .alert(
             "Delete this internal route?",
@@ -77,6 +96,67 @@ struct DeploymentDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This removes the admin username and saved admin password for this deployment.")
+        }
+    }
+
+    // MARK: - Ping status row
+
+    private var pingStatusRow: some View {
+        Button {
+            guard entitlements.isEnabled(.portDiagnostics) else {
+                showingUpgradeForPing = true
+                return
+            }
+            let hasTarget = diagnosticHost != nil ||
+                !(deployment.deploymentURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            guard hasTarget, diagnostics.status != .checking else { return }
+            runPingCheck()
+        } label: {
+            HStack(spacing: 8) {
+                if diagnostics.status == .checking {
+                    Circle()
+                        .fill(ConduitTheme.accent)
+                        .frame(width: 12, height: 12)
+                        .shadow(color: ConduitTheme.accent.opacity(0.5), radius: 6)
+                        .opacity(pingPulse ? 0.3 : 1.0)
+                } else {
+                    StatusDot(isOnline: deployment.isOnline)
+                }
+
+                Text(pingStatusText)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(ConduitTheme.secondary)
+
+                let hasTarget = diagnosticHost != nil ||
+                    !(deployment.deploymentURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+                if hasTarget {
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(diagnostics.status == .checking ? ConduitTheme.accent : ConduitTheme.muted)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(.top, -8)
+    }
+
+    private var pingStatusText: String {
+        switch diagnostics.status {
+        case .checking:    return "Checking..."
+        case .reachable:   return "System Online"
+        case .unreachable: return "System Offline"
+        case .idle:        return deployment.isOnline ? "System Online" : "System Offline"
+        }
+    }
+
+    private func runPingCheck() {
+        if let host = diagnosticHost,
+           let p = deployment.systemPort,
+           let port = UInt16(exactly: p) {
+            diagnostics.check(host: host, port: port)
+        } else if let url = deployment.deploymentURL?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !url.isEmpty {
+            diagnostics.checkURL(url)
         }
     }
 
@@ -357,6 +437,13 @@ struct DeploymentDetailView: View {
         return URL(string: "https://\(rawValue)")
     }
 
+    private var diagnosticHost: String? {
+        let raw = deployment.deploymentURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !raw.isEmpty else { return nil }
+        let urlString = raw.hasPrefix("http") ? raw : "https://\(raw)"
+        return URL(string: urlString)?.host
+    }
+
     private var sortedCustomSections: [CustomSettingSection] {
         (deployment.customSections ?? []).sorted {
             $0.sortOrder == $1.sortOrder
@@ -484,3 +571,4 @@ struct DeploymentDetailView: View {
         modelContext.delete(field)
     }
 }
+
