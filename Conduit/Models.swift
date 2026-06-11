@@ -8,19 +8,13 @@ private func conduitTrimmed(_ value: String) -> String {
 }
 
 private func conduitTrimmedOptional(_ value: String?) -> String? {
-    guard let value else {
-        return nil
-    }
-
+    guard let value else { return nil }
     let trimmedValue = conduitTrimmed(value)
     return trimmedValue.isEmpty ? nil : trimmedValue
 }
 
 private func conduitOptionalPort(_ port: Int?) -> Int? {
-    guard let port, conduitValidPortRange.contains(port) else {
-        return nil
-    }
-
+    guard let port, conduitValidPortRange.contains(port) else { return nil }
     return port
 }
 
@@ -168,14 +162,10 @@ enum CustomSettingFieldType: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .text:
-            "Text"
-        case .url:
-            "URL"
-        case .port:
-            "Port"
-        case .password:
-            "Password"
+        case .text:     "Text"
+        case .url:      "URL"
+        case .port:     "Port"
+        case .password: "Password"
         }
     }
 }

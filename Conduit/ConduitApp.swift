@@ -32,16 +32,14 @@ struct ConduitApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(EntitlementManager.shared)
         }
         .modelContainer(sharedModelContainer)
     }
 
     private static func seedDemoProjectIfNeeded(in container: ModelContainer) {
         let seedKey = "hasCreatedDemoProject"
-
-        guard !UserDefaults.standard.bool(forKey: seedKey) else {
-            return
-        }
+        guard !UserDefaults.standard.bool(forKey: seedKey) else { return }
 
         let context = ModelContext(container)
         let descriptor = FetchDescriptor<Client>()
@@ -70,25 +68,14 @@ struct ConduitApp: App {
             client.deployments.append(deployment)
             context.insert(deployment)
 
-            let route = InternalRoute(
-                deployment: deployment,
-                serviceName: "Web App",
-                port: 8080
-            )
+            let route = InternalRoute(deployment: deployment, serviceName: "Web App", port: 8080)
             deployment.internalRoutes.append(route)
             context.insert(route)
 
-            let section = CustomSettingSection(
-                deployment: deployment,
-                title: "Notes",
-                sortOrder: 0
-            )
+            let section = CustomSettingSection(deployment: deployment, title: "Notes", sortOrder: 0)
             let field = CustomSettingField(
-                section: section,
-                label: "Environment",
-                value: "Beta demo",
-                type: .text,
-                sortOrder: 0
+                section: section, label: "Environment",
+                value: "Beta demo", type: .text, sortOrder: 0
             )
             section.fields.append(field)
             deployment.customSections.append(section)
