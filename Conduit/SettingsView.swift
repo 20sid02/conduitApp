@@ -28,32 +28,53 @@ struct SettingsView: View {
                 syncSection
                 appearanceSection
 
-                Section("About Conduit Plus") {
-                    Text("Conduit Plus is a local-first infrastructure workspace for developers. Track unlimited clients, deployments, ports, URLs, and credentials — synced across your Apple devices via iCloud, with no account or backend required.")
-                        .font(.subheadline)
-                        .foregroundStyle(ConduitTheme.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                if entitlements.isPro {
+                    Section("About Conduit Plus") {
+                        Text("Conduit Plus is a local-first infrastructure workspace for developers. Track unlimited clients, deployments, ports, URLs, and credentials — synced across your Apple devices via iCloud, with no account or backend required.")
+                            .font(.subheadline)
+                            .foregroundStyle(ConduitTheme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
 
-                    if !entitlements.isPro {
+                    Section {
+                        Text("Conduit Plus is built to make managing servers and client infrastructure less painful. If something feels off, broken, or genuinely useful, I would really like to hear it.")
+                            .font(.subheadline)
+                            .foregroundStyle(ConduitTheme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Section("Privacy") {
+                        Text("Conduit Plus has no account, no backend, and no telemetry. Your infrastructure data stays on your devices and syncs privately through your personal iCloud container. Credentials are stored exclusively in the iOS Keychain and are never included in iCloud sync.")
+                            .font(.subheadline)
+                            .foregroundStyle(ConduitTheme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                } else {
+                    Section("About Conduit") {
+                        Text("Conduit is a local-first infrastructure workspace for developers. Track clients, deployments, ports, URLs, and credentials — all stored privately on your device.")
+                            .font(.subheadline)
+                            .foregroundStyle(ConduitTheme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
                         LabeledContent(
                             "Free Limits",
                             value: "\(FreeTierLimits.maxClients) clients, \(FreeTierLimits.maxDeploymentsPerClient) deployments each"
                         )
                     }
-                }
 
-                Section {
-                    Text("Conduit Plus is built to make managing servers and client infrastructure less painful. If something feels off, broken, or genuinely useful, I would really like to hear it.")
-                        .font(.subheadline)
-                        .foregroundStyle(ConduitTheme.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                    Section {
+                        Text("Conduit is built to make managing servers and client infrastructure less painful. If something feels off, broken, or genuinely useful, I would really like to hear it.")
+                            .font(.subheadline)
+                            .foregroundStyle(ConduitTheme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
 
-                Section("Privacy") {
-                    Text("Conduit Plus has no account, no backend, and no telemetry. Your infrastructure data stays on your devices and syncs privately through your personal iCloud container. Credentials are stored exclusively in the iOS Keychain and are never included in iCloud sync.")
-                        .font(.subheadline)
-                        .foregroundStyle(ConduitTheme.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Section("Privacy") {
+                        Text("Conduit has no account, no backend, and no telemetry. Your infrastructure data stays exclusively on your device. Credentials are stored in the iOS Keychain and never leave your device.")
+                            .font(.subheadline)
+                            .foregroundStyle(ConduitTheme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
 
                 Section {

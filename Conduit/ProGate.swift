@@ -44,7 +44,7 @@ struct ProGateCard: View {
                 Button {
                     showingUpgrade = true
                 } label: {
-                    Text("Upgrade to Pro")
+                    Text("Upgrade to Conduit Plus")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)

@@ -192,17 +192,14 @@ final class EntitlementManager {
         // • hasValidEntitlement  → confirmed active Pro purchase
         // • hasRevokedEntitlement → confirmed revocation/refund
         // • neither              → server propagation delay or no purchase; leave state alone
-        var hasValidEntitlement    = false
-        var hasRevokedEntitlement  = false
+        var hasValidEntitlement = false
 
         for await result in Transaction.currentEntitlements {
             switch result {
             case .verified(let t) where ProductID.all.contains(t.productID):
-                if t.revocationDate != nil {
-                    hasRevokedEntitlement = true
-                } else {
-                    hasValidEntitlement = true
-                }
+                // currentEntitlements only yields active (non-revoked) transactions.
+                // Revoked products are removed from this stream entirely.
+                hasValidEntitlement = true
             case .verified:
                 break   // unrelated product
             case .unverified:
@@ -215,14 +212,9 @@ final class EntitlementManager {
                 // Confirmed active — persist Pro.
                 isPro = true
                 UserDefaults.standard.set(true, forKey: Self.proKey)
-            } else if hasRevokedEntitlement {
-                // Explicit revocation (refund, cancellation) — remove Pro.
-                isPro = false
-                UserDefaults.standard.set(false, forKey: Self.proKey)
             }
-            // Zero entitlements returned → Apple's servers haven't propagated yet,
-            // or the user has never purchased. Either way, leave `isPro` at its
-            // current persisted value so we don't clobber a just-completed purchase.
+            // Zero entitlements → server propagation delay or no purchase.
+            // Revocations are handled directly in listenForTransactions(), not here.
         }
     }
 
@@ -240,8 +232,11 @@ final class EntitlementManager {
                             // subscription renewal, etc.) — persist Pro immediately.
                             await self?.setProStatus(true)
                         } else {
-                            // Revocation arrived — do a full entitlement refresh to confirm.
-                            await self?.refreshEntitlements()
+                            // Revocation confirmed by a verified transaction — revoke directly.
+                            // refreshEntitlements() won't work here: refunded transactions are
+                            // removed from currentEntitlements entirely, so that loop never
+                            // sets hasRevokedEntitlement and leaves isPro unchanged.
+                            await self?.setProStatus(false)
                         }
                     }
                 case .unverified(let transaction, let error):
