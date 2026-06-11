@@ -7,7 +7,7 @@
 //
 
 enum FreeTierLimits {
-    static let maxClients = 4
+    static let maxClients = 3
     static let maxDeploymentsPerClient = 3
     static let searchEnabled = false
 }

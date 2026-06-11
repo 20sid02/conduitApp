@@ -9,7 +9,9 @@ import SwiftData
 struct AddClientView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(EntitlementManager.self) private var entitlements
 
+    @Query private var clients: [Client]
     @State private var name = ""
 
     var body: some View {
@@ -37,6 +39,7 @@ struct AddClientView: View {
     }
 
     private func saveClient() {
+        guard clients.count < entitlements.maxClients else { return }
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let client = Client(name: trimmedName, createdAt: Date())
         modelContext.insert(client)

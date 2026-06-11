@@ -60,6 +60,7 @@ struct AddDeploymentView: View {
     }
 
     private func saveDeployment() {
+        guard (client.deployments?.count ?? 0) < entitlements.maxDeploymentsPerClient else { return }
         let trimmedURL = deploymentURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let deployment = Deployment(
             client: client,

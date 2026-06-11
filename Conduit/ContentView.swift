@@ -26,9 +26,13 @@ struct ContentView: View {
                         ScreenHeader(
                             title: "Keyring",
                             settingsAction: { showingSettings = true },
-                            action: clients.count < entitlements.maxClients ? {
-                                showingAddSheet = true
-                            } : nil
+                            action: {
+                                if clients.count < entitlements.maxClients {
+                                    showingAddSheet = true
+                                } else {
+                                    showingUpgrade = true
+                                }
+                            }
                         )
 
                         if clients.count >= entitlements.maxClients {

@@ -85,9 +85,9 @@ final class EntitlementManager {
 
     // MARK: Limit helpers — read these instead of FreeTierLimits in views
 
-    var maxClients: Int            { isPro ? .max : FreeTierLimits.maxClients }
+    var maxClients: Int              { isPro ? .max : FreeTierLimits.maxClients }
     var maxDeploymentsPerClient: Int { isPro ? .max : FreeTierLimits.maxDeploymentsPerClient }
-    var isSearchEnabled: Bool      { isPro || FreeTierLimits.searchEnabled }
+    var isSearchEnabled: Bool        { isPro || FreeTierLimits.searchEnabled }
 
     func isEnabled(_ feature: ProFeature) -> Bool { isPro }
 

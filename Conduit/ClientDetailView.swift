@@ -12,6 +12,7 @@ struct ClientDetailView: View {
 
     @Bindable var client: Client
     @State private var showingAddDeploymentSheet = false
+    @State private var showingUpgrade = false
     @State private var deploymentPendingDeletion: Deployment?
     @State private var showingDeleteDeploymentConfirmation = false
 
@@ -20,14 +21,19 @@ struct ClientDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     let deploymentCount = client.deployments?.count ?? 0
+                    let atDeploymentLimit = deploymentCount >= entitlements.maxDeploymentsPerClient
                     ScreenHeader(
                         title: client.name,
-                        action: deploymentCount < entitlements.maxDeploymentsPerClient ? {
-                            showingAddDeploymentSheet = true
-                        } : nil
+                        action: {
+                            if atDeploymentLimit {
+                                showingUpgrade = true
+                            } else {
+                                showingAddDeploymentSheet = true
+                            }
+                        }
                     )
 
-                    if deploymentCount >= entitlements.maxDeploymentsPerClient {
+                    if atDeploymentLimit {
                         ProGateCard(feature: .unlimitedDeployments)
                     }
 
@@ -74,6 +80,9 @@ struct ClientDetailView: View {
         }
         .sheet(isPresented: $showingAddDeploymentSheet) {
             AddDeploymentView(client: client)
+        }
+        .sheet(isPresented: $showingUpgrade) {
+            ProUpgradeView()
         }
     }
 
